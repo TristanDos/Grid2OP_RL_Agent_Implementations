@@ -1,76 +1,78 @@
 import gymnasium as gym
+
 import numpy as np
-import torch
-import torch.nn as nn
-import torch.optim as optim
-import torch.nn.functional as F
-from torch.distributions import Categorical, Normal
-from collections import OrderedDict
+
+import matplotlib.pyplot as plt
+
+import os
+
+import pickle
 
 import grid2op
 from grid2op import gym_compat
-from grid2op.Parameters import Parameters
 from grid2op.Action import PlayableAction
 from grid2op.Observation import CompleteObservation
 from grid2op.Reward import L2RPNReward, N1Reward, CombinedScaledReward
+from grid2op.Parameters import Parameters
 
 from lightsim2grid import LightSimBackend
 
+from stable_baselines3 import PPO, A2C
+from stable_baselines3.common.env_util import make_vec_env
+from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.callbacks import BaseCallback
+from stable_baselines3.common.callbacks import CallbackList
+
 # Gymnasium environment wrapper around Grid2Op environment
 class Gym2OpEnv(gym.Env):
-    def __init__(self):
+    def __init__(self, max_steps):
         super().__init__()
 
         self._backend = LightSimBackend()
-        self._env_name = "l2rpn_case14_sandbox"  # DO NOT CHANGE
+        self._env_name = "l2rpn_case14_sandbox"
 
         action_class = PlayableAction
         observation_class = CompleteObservation
-        reward_class = CombinedScaledReward  # Setup further below
+        reward_class = CombinedScaledReward  # Combines L2RPN and N1 rewards
 
         # DO NOT CHANGE Parameters
+        # See https://grid2op.readthedocs.io/en/latest/parameters.html
         p = Parameters()
-        p.MAX_SUB_CHANGED = 4
-        p.MAX_LINE_STATUS_CHANGED = 4
+        p.MAX_SUB_CHANGED = 4  # Up to 4 substations can be reconfigured each timestep
+        p.MAX_LINE_STATUS_CHANGED = 4  # Up to 4 powerline statuses can be changed each timestep
 
-        # Make grid2op env
+
+        # Create Grid2Op environment with specified parameters
         self._g2op_env = grid2op.make(
             self._env_name, backend=self._backend, test=False,
             action_class=action_class, observation_class=observation_class,
             reward_class=reward_class, param=p
         )
 
-        # Setup reward
+        ##########
+        # REWARD #
+        ##########
+        # NOTE: This reward should not be modified when evaluating RL agent
+        # See https://grid2op.readthedocs.io/en/latest/reward.html
         cr = self._g2op_env.get_reward_instance()
         cr.addReward("N1", N1Reward(), 1.0)
         cr.addReward("L2RPN", L2RPNReward(), 1.0)
+        # reward = N1 + L2RPN
         cr.initialize(self._g2op_env)
+        ##########
 
         self._gym_env = gym_compat.GymEnv(self._g2op_env)
+
+        self.max_steps = max_steps 
+        self.curr_step = 0 
 
         self.setup_observations()
         self.setup_actions()
 
     def setup_observations(self):
-        # Define the observations we want to keep
-        self.obs_to_keep = [
-            'rho', 'line_status', 'topo_vect', 'actual_dispatch',
-            'target_dispatch', 'gen_p', 'load_p'
-        ]
-        
-        # Calculate the flattened observation space size
-        self.flat_obs_size = sum(
-            np.prod(self._gym_env.observation_space[k].shape)
-            for k in self.obs_to_keep
-        )
-        
-        # Define our simplified observation space
-        self.observation_space = gym.spaces.Box(
-            low=-np.inf, high=np.inf, shape=(self.flat_obs_size,)
-        )
+        self.observation_space = self._gym_env.observation_space
 
     def setup_actions(self):
-        # Simplify the action space to focus on 'change_bus' and 'redispatch'
         low = []
         high = []
         for key, space in self._gym_env.action_space.spaces.items():
@@ -86,11 +88,16 @@ class Gym2OpEnv(gym.Env):
         self.action_space =  gym.spaces.Box(np.array(low), np.array(high), dtype=np.int32)
         # self.action_space =  gym.spaces.flatten_space(self._gym_env.action_space)
 
-    def _flatten_observation(self, obs):
-        return np.concatenate([
-            obs[k].flatten() for k in self.obs_to_keep
-        ])
-    
+    def step(self, action):
+        original_action = self.unflatten_action(action)
+        self.curr_step += 1 
+        obs, reward, terminated, truncated, _ = self._gym_env.step(original_action)
+        
+        if self.curr_step >= self.max_steps:
+            terminated = True
+
+        return obs, reward, terminated, truncated, _
+
     def unflatten_action(self, action):
         original_action = {}
         idx = 0
@@ -105,115 +112,227 @@ class Gym2OpEnv(gym.Env):
                 idx += size
         return original_action
 
-    def reset(self, seed=None):
+    def reset(self, seed=None):  # Add seed argument here
         self.curr_step = 0 
         return self._gym_env.reset(seed=seed)
 
-    def step(self, action):
-        # Convert the action from our simplified space to the full Grid2Op action
-        full_action = self._gym_env.action_space({
-            'change_bus': action['change_bus'],
-            'redispatch': action['redispatch']
-        })
-        obs, reward, terminated, truncated, info = self._gym_env.step(full_action)
-        return self._flatten_observation(obs), reward, terminated, truncated, info
+    def render(self, mode="human"):
+        return self._gym_env.render(mode=mode)
 
-    def render(self):
-        return self._gym_env.render()
+class RewardLoggerCallback(BaseCallback):
 
-# A3C Neural Network
-class A3CNetwork(nn.Module):
-    def __init__(self, input_size, n_actions):
-        super(A3CNetwork, self).__init__()
-        self.fc1 = nn.Linear(input_size, 128)
-        self.fc2 = nn.Linear(128, 128)
-        self.actor = nn.Linear(128, n_actions)
-        self.critic = nn.Linear(128, 1)
+    def __init__(self, verbose=0):
+        super(RewardLoggerCallback, self).__init__(verbose)
+        self.episode_rewards = []
+        self.current_rewards = []
 
-    def forward(self, x):
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        return self.actor(x), self.critic(x)
+    def _on_step(self) -> bool:
+        # Get the reward for the current step
+        reward = self.locals['rewards'][0]
+        self.current_rewards.append(reward)
 
-# A3C Agent
-class A3CAgent:
-    def __init__(self, env, learning_rate=0.001, gamma=0.99):
-        self.env = env
-        self.gamma = gamma
+        # Check if the episode is done, then log the reward
+        done = self.locals['dones']
+        if done:
+            episode_reward = np.sum(self.current_rewards)
+            self.episode_rewards.append(episode_reward)
+            self.current_rewards = []
+            if self.verbose > 0:
+                print(f"Episode reward: {episode_reward}")
+        return True
 
-        input_size = env.observation_space.shape[0]
-        n_actions = env.action_space.n
+    def get_rewards(self):
+        return self.episode_rewards
+    
+class EpisodeLengthLoggerCallback(BaseCallback):
+    def __init__(self, verbose=0):
+        super(EpisodeLengthLoggerCallback, self).__init__(verbose)
+        self.episode_lengths = []
+        self.current_length = 0
 
-        self.network = A3CNetwork(input_size, n_actions)
-        self.optimizer = optim.Adam(self.network.parameters(), lr=learning_rate)
+    def _on_step(self) -> bool:
+        # Increment the step count
+        self.current_length += 1
 
-    def choose_action(self, state):
-        state = torch.FloatTensor(state)
-        logits, _ = self.network(state)
-        probs = F.softmax(logits, dim=-1)
-        action_dist = Categorical(probs)
-        action = action_dist.sample()
-        return action.item()
+        # Check if the episode is done, then log the episode length
+        done = self.locals['dones']
+        if done:
+            self.episode_lengths.append(self.current_length)
+            self.current_length = 0  # Reset for the next episode
+            if self.verbose > 0:
+                print(f"Episode length: {self.episode_lengths[-1]}")
+        return True
 
-    def update(self, states, actions, rewards, next_states, dones):
-        states = torch.FloatTensor(states)
-        actions = torch.LongTensor(actions)
-        rewards = torch.FloatTensor(rewards)
-        next_states = torch.FloatTensor(next_states)
-        dones = torch.FloatTensor(dones)
+    def get_lengths(self):
+        return self.episode_lengths
 
-        logits, values = self.network(states)
-        _, next_values = self.network(next_states)
+def create_env(max_steps):
+    return Monitor(Gym2OpEnv(max_steps))
 
-        probs = F.softmax(logits, dim=-1)
-        action_dist = Categorical(probs)
-        log_probs = action_dist.log_prob(actions)
+def train(model_class, model_name, env, total_timesteps=10000):
+    print('Training ' + model_name)
 
-        advantages = rewards + self.gamma * next_values * (1 - dones) - values
-        actor_loss = -(log_probs * advantages.detach()).mean()
-        critic_loss = advantages.pow(2).mean()
+    reward_logger = RewardLoggerCallback()
+    length_logger = EpisodeLengthLoggerCallback()
 
-        entropy = -(probs * probs.log()).sum(1).mean()
-        loss = actor_loss + 0.5 * critic_loss - 0.01 * entropy
+    callback_list = CallbackList([reward_logger, length_logger])
 
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
+    model = model_class("MultiInputPolicy", env, verbose=1)
+    model.learn(total_timesteps=total_timesteps, callback=callback_list)
+    model.save(f"baseline/{model_name}")
 
-def train(agent, n_episodes=1000, max_steps=100):
-    for episode in range(n_episodes):
-        state = agent.env.reset()
-        total_reward = 0
+    print('Completed Training ' + model_name)
+    
+    # Plotting rewards and Episode lengths after training
+    rewards = reward_logger.get_rewards()
+    episode_lengths = length_logger.get_lengths()
+
+    return model, rewards, episode_lengths
+
+def evaluate(env, model, n_episodes=10, random_agent=False):
+    
+    print('Evaluating agent')
+
+    rewards = []
+    episode_lengths = []
+
+    for _ in range(n_episodes):
+        episode_reward = 0
+        steps = 0
         done = False
-        step = 0
-
-        states, actions, rewards, next_states, dones = [], [], [], [], []
-
-        while not done and step < max_steps:
-            action = agent.choose_action(state)
-            next_state, reward, terminated, truncated, _ = agent.env.step(action)
+        obs = env.reset()[0]
+        while not done:
+            steps += 1
+            if (random_agent):
+                action = env.action_space.sample()
+            else:
+                action, _states = model.predict(obs)
+            obs, reward, terminated, truncated, _ = env.step(action)
+            episode_reward += reward
             done = terminated or truncated
 
-            states.append(state)
-            actions.append(action)
-            rewards.append(reward)
-            next_states.append(next_state)
-            dones.append(done)
+        rewards.append(episode_reward)
+        episode_lengths.append(steps)
+    
+    mean_r_reward = np.mean(rewards)
+    std_r_reward = np.std(rewards)
+    mean_l_reward = np.mean(episode_lengths)
+    std_l_reward = np.std(episode_lengths)
 
-            state = next_state
-            total_reward += reward
-            step += 1
+    print('Completed evaluating agent')
 
-            if len(states) == 32 or done:  # Update every 32 steps or at episode end
-                agent.update(states, actions, rewards, next_states, dones)
-                states, actions, rewards, next_states, dones = [], [], [], [], []
+    return mean_r_reward, std_r_reward, mean_l_reward, std_l_reward
 
-        print(f"Episode {episode + 1}, Total Reward: {total_reward}, Steps: {step}")
+def plot_returns(returns):
+    ppo_r_mean, ppo_r_std, ppo_l_mean, ppo_l_std, ppo_reward, ppo_length = returns['ppo']
+    a2c_r_mean, a2c_r_std, a2c_l_mean, a2c_l_std, a2c_reward, a2c_length = returns['a2c']
+    random_r_mean, random_r_std, random_l_mean, random_l_std = returns['random']
+
+    agents = ['Random', 'PPO', 'A2C']
+    r_means = [random_r_mean, ppo_r_mean, a2c_r_mean]
+    r_stds = [random_r_std, ppo_r_std, a2c_r_std]
+    l_means = [random_l_mean, ppo_l_mean, a2c_l_mean]
+    l_stds = [random_l_std, ppo_l_std, a2c_l_std]
+
+    plt.figure(figsize=(10, 6))
+    plt.bar(agents, r_means, yerr=r_stds, capsize=10)
+    plt.title('Final Agent Return Comparison')
+    plt.ylabel('Mean Return')
+    plt.ylim(bottom=0)
+    for i, v in enumerate(r_means):
+        plt.text(i, v + 0.5, f'{v:.2f}', ha='center')
+    plt.savefig('plots/agent_r_comparison.png')
+    plt.close()
+
+    plt.figure(figsize=(10, 6))
+    plt.bar(agents, l_means, yerr=l_stds, capsize=10)
+    plt.title('Final Agent Length Comparison')
+    plt.ylabel('Mean Length')
+    plt.ylim(bottom=0)
+    for i, v in enumerate(r_means):
+        plt.text(i, v + 0.5, f'{v:.2f}', ha='center')
+    plt.savefig('plots/agent_l_comparison.png')
+    plt.close()
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(ppo_reward, label='PPO', marker='o', linestyle='-')
+    plt.plot(a2c_reward, label='A2C', marker='s', linestyle='-')
+    plt.xlabel('Episodes')
+    plt.ylabel('Reward')
+    plt.title('Reward Comparison of PPO, A2C, and Random Agent')
+    plt.legend()
+    plt.savefig('plots/agent_reward.png')
+    plt.close()
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(ppo_length, label='PPO', marker='o', linestyle='-')
+    plt.plot(a2c_length, label='A2C', marker='s', linestyle='-')
+    plt.xlabel('Episodes')
+    plt.ylabel('Episode Length')
+    plt.title('Episode Length Over Time for PPO, A2C and Random Agents')
+    plt.legend()
+    plt.savefig('plots/episode_length_over_time.png')
+    plt.close()
 
 def main():
-    env = Gym2OpEnv()
-    agent = A3CAgent(env)
-    train(agent)
+    max_steps = 200
+    env = create_env(max_steps)
+    vec_env = make_vec_env(lambda: env, n_envs=1)
+
+    ppo_reward = 0
+    a2c_reward = 0
+    
+    # Train PPO
+    if not os.path.exists('baseline/ppo_grid2op.zip'):
+        ppo_model, ppo_reward, ppo_length = train(PPO, "ppo_grid2op", vec_env)
+
+        combo : tuple[list, list] = (ppo_reward, ppo_length)
+
+        # Pickle a simple object
+        with open('baseline/ppoMeta.pickle', 'wb') as f:
+            pickle.dump(combo, f)
+    else:
+        ppo_model = PPO.load('baseline/ppo_grid2op.zip', env=env)
+
+        # Unpickle the object
+        with open('baseline/ppoMeta.pickle', 'rb') as f:
+            ppo_reward, ppo_length = pickle.load(f)
+
+    # Train A2C
+    if not os.path.exists('baseline/a2c_grid2op.zip'):
+        a2c_model, a2c_reward, a2c_length = train(A2C, "a2c_grid2op", vec_env)
+        combo : tuple[list, list] = (a2c_reward, a2c_length)
+
+        # Pickle a simple object
+        with open('baseline/a2cMeta.pickle', 'wb') as f:
+            pickle.dump(combo, f)
+
+    else:
+        a2c_model = A2C.load('baseline/a2c_grid2op.zip', env=env)
+
+        # Unpickle the object
+        with open('baseline/a2cMeta.pickle', 'rb') as f:
+            a2c_reward, a2c_length = pickle.load(f)
+    
+    return_dict = {}
+
+    # Evaluate PPO
+    ppo_r_mean, ppo_r_std, ppo_l_mean, ppo_l_std = evaluate(env, ppo_model)
+
+    return_dict['ppo'] = (ppo_r_mean, ppo_r_std, ppo_l_mean, ppo_l_std, ppo_reward, ppo_length)
+
+    # Evaluate A2C
+    a2c_r_mean, a2c_r_std, a2c_l_mean, a2c_l_std = evaluate(env, a2c_model)
+
+    return_dict['a2c'] = (a2c_r_mean, a2c_r_std, a2c_l_mean, a2c_l_std, a2c_reward, a2c_length)
+
+    # Evaluate Random
+    random_r_mean, random_r_std, random_l_mean, random_l_std = evaluate(env, None, random_agent=True)
+
+    return_dict['random'] = (random_r_mean, random_r_std, random_l_mean, random_l_std)
+
+    # Plot returns
+    plot_returns(return_dict)
 
 if __name__ == "__main__":
     main()
