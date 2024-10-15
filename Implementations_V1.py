@@ -16,6 +16,8 @@ from grid2op.Observation import CompleteObservation
 from grid2op.Reward import L2RPNReward, N1Reward, CombinedScaledReward
 from grid2op.Parameters import Parameters
 
+from gym import spaces
+
 from lightsim2grid import LightSimBackend
 
 from stable_baselines3 import PPO, A2C
@@ -80,6 +82,8 @@ class Gym2OpEnv(gym.Env):
         self.setup_observations()
         self.setup_actions()
 
+        self.action_mask = np.ones(self.action_space.shape, dtype=np.int8)
+
         print(self.observation_space)
 
     def setup_observations(self):
@@ -141,6 +145,9 @@ class Gym2OpEnv(gym.Env):
         self.curr_step += 1 
         obs, reward, terminated, truncated, info = self._gym_env.step(original_action)
 
+        # Update the action mask based on the new observation
+        self.update_action_mask(obs)
+
         # Filter the observation
         filtered_obs = {key: obs[key] for key in self.observations_to_keep if key in obs}
 
@@ -149,15 +156,31 @@ class Gym2OpEnv(gym.Env):
 
         return filtered_obs, reward, terminated, truncated, info
 
-
     def reset(self, seed=None):  # Add seed argument here
         self.curr_step = 0 
         obs, info = self._gym_env.reset(seed=seed)
+
+        self.update_action_mask(obs)
 
         # Filter the observation
         filtered_obs = {key: obs[key] for key in self.observations_to_keep if key in obs}
 
         return (filtered_obs, info)
+
+    def update_action_mask(self, obs):
+        # Get the legal actions from the environment
+        legal_actions = self._g2op_env.action_space.get_legal_actions(obs)
+        
+        # Reset the mask
+        self.action_mask.fill(0)
+        
+        # Set mask to 1 for legal actions
+        for legal_action in legal_actions:
+            flattened_action = self.flatten_action(legal_action)
+            self.action_mask[flattened_action == 1] = 1
+
+    def get_action_mask(self):
+        return self.action_mask
 
     def render(self, mode="human"):
         return self._gym_env.render(mode=mode)
