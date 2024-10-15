@@ -66,8 +66,12 @@ class Gym2OpEnv(gym.Env):
         self.max_steps = max_steps 
         self.curr_step = 0 
 
+        print(self._gym_env.action_space)
+
         self.setup_observations()
         self.setup_actions()
+
+        print(self.action_space)
 
     def setup_observations(self):
         self.observation_space = self._gym_env.observation_space
@@ -88,16 +92,6 @@ class Gym2OpEnv(gym.Env):
         self.action_space =  gym.spaces.Box(np.array(low), np.array(high), dtype=np.int32)
         # self.action_space =  gym.spaces.flatten_space(self._gym_env.action_space)
 
-    def step(self, action):
-        original_action = self.unflatten_action(action)
-        self.curr_step += 1 
-        obs, reward, terminated, truncated, _ = self._gym_env.step(original_action)
-        
-        if self.curr_step >= self.max_steps:
-            terminated = True
-
-        return obs, reward, terminated, truncated, _
-
     def unflatten_action(self, action):
         original_action = {}
         idx = 0
@@ -111,6 +105,17 @@ class Gym2OpEnv(gym.Env):
                 original_action[key] = action[idx:idx + size]
                 idx += size
         return original_action
+
+    def step(self, action):
+        original_action = self.unflatten_action(action)
+        self.curr_step += 1 
+        obs, reward, terminated, truncated, _ = self._gym_env.step(original_action)
+        
+        if self.curr_step >= self.max_steps:
+            terminated = True
+
+        return obs, reward, terminated, truncated, _
+
 
     def reset(self, seed=None):  # Add seed argument here
         self.curr_step = 0 
