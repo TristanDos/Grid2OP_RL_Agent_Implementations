@@ -14,10 +14,12 @@ from lightsim2grid import LightSimBackend
 from typing import Dict, Literal, Any
 import copy
 
-from stable_baselines3 import PPO, A2C
+from stable_baselines3 import *
 from stable_baselines3.common.env_checker import check_env
+from stable_baselines3.common.env_util import make_vec_env
 import numpy as np
 from tqdm import tqdm
+import os
 
 class Gym2OpEnv(gym.Env):
     def __init__(self,
@@ -55,8 +57,117 @@ class Gym2OpEnv(gym.Env):
         self._gym_env = gym_compat.GymEnv(self._g2op_env)
 
         # customize observation space
-        obs_attr_to_keep = [key for key in self._gym_env.observation_space.keys()]
-        obs_check = ['a_or',
+
+        if "obs_attr_to_keep" in env_config:
+            obs_attr_to_keep = copy.deepcopy(env_config["obs_attr_to_keep"])
+        self._gym_env.observation_space.close()
+        self._gym_env.observation_space = BoxGymObsSpace(self._g2op_env.observation_space,
+                                                         attr_to_keep=obs_attr_to_keep
+                                                         )
+        # export observation space for the Grid2opEnv
+        self.observation_space = Box(shape=self._gym_env.observation_space.shape,
+                                     low=self._gym_env.observation_space.low,
+                                     high=self._gym_env.observation_space.high)
+
+        # customize the action space
+        if "act_type" in env_config:
+            act_type = env_config["act_type"]
+        else:
+            act_type = "discrete"
+
+        self._gym_env.action_space.close()
+        
+        if act_type == "discrete":
+            # user wants a discrete action space
+            if "act_attr_to_keep" in env_config:
+                act_attr_to_keep = copy.deepcopy(env_config["act_attr_to_keep"])
+            self._gym_env.action_space = DiscreteActSpace(self._g2op_env.action_space,
+                                                          attr_to_keep=act_attr_to_keep)
+            self.action_space = Discrete(self._gym_env.action_space.n)
+        elif act_type == "box":
+            # user wants continuous action space
+            if "act_attr_to_keep" in env_config:
+                act_attr_to_keep = copy.deepcopy(env_config["act_attr_to_keep"])
+            self._gym_env.action_space = BoxGymActSpace(self._g2op_env.action_space,
+                                                        attr_to_keep=act_attr_to_keep)
+            self.action_space = Box(shape=self._gym_env.action_space.shape,
+                                    low=self._gym_env.action_space.low,
+                                    high=self._gym_env.action_space.high)
+        elif act_type == "multi_discrete":
+            # user wants a multi-discrete action space
+            if "act_attr_to_keep" in env_config:
+                act_attr_to_keep = copy.deepcopy(env_config["act_attr_to_keep"])
+            self._gym_env.action_space = MultiDiscreteActSpace(self._g2op_env.action_space,
+                                                               attr_to_keep=act_attr_to_keep)
+            self.action_space = MultiDiscrete(self._gym_env.action_space.nvec)
+        else:
+            print(act_type)
+            raise NotImplementedError(f"action type '{act_type}' is not currently supported.")
+        
+        # self.setup_observations()
+        # self.setup_actions()
+
+    def setup_observations(self):
+        self.observation_space = self._gym_env.observation_space
+
+    def setup_actions(self):
+        self.action_space = self.flatten_action_space()
+
+    def reset(self, seed=None):
+        return self._gym_env.reset(seed=seed, options=None)
+
+    def step(self, action):
+        return self._gym_env.step(action)
+
+    def render(self):
+        return self._gym_env.render()
+
+class RandomAgent():
+    def __init__(self, env: Gym2OpEnv):
+        self.env = env
+
+    def predict(self, obs, deterministic: bool):
+        return self.env.action_space.sample(), None
+    
+    def learn(self, total_timesteps: int, progress_bar: bool):
+        pass
+
+    def save(self, path):
+        pass
+
+def evaluate_agent(model, env, num_episodes=10):
+    total_rewards = []
+    episode_lengths = []
+
+    for episode in tqdm(range(num_episodes), desc=f"Evaluating over {num_episodes} episodes"):
+        obs, info = env.reset()
+        episode_reward = 0
+        episode_length = 0
+        done = False
+        
+        while not done:
+            action, _states = model.predict(obs, deterministic=True)
+
+            obs, reward, done, truncated, info = env.step(action)
+            episode_reward += reward
+            episode_length += 1
+
+            if done or truncated:
+                break
+        
+        total_rewards.append(episode_reward)
+        episode_lengths.append(episode_length)
+
+    # Compute average reward and episode length
+    avg_reward = sum(total_rewards) / num_episodes
+    avg_length = sum(episode_lengths) / num_episodes
+
+    return avg_reward, avg_length
+
+def main():
+
+    act_attr_to_keep = ['change_bus', 'change_line_status', 'curtail', 'curtail_mw', 'redispatch', 'set_bus', 'set_line_status', 'set_storage']
+    obs_attr_to_keep = ['a_or',
                     'active_alert',
                     'actual_dispatch',
                     'alert_duration',
@@ -121,182 +232,52 @@ class Gym2OpEnv(gym.Env):
                     'was_alert_used_after_attack',
                     'year']
 
-        if "obs_attr_to_keep" in env_config:
-            obs_attr_to_keep = copy.deepcopy(env_config["obs_attr_to_keep"])
-        self._gym_env.observation_space.close()
-        self._gym_env.observation_space = BoxGymObsSpace(self._g2op_env.observation_space,
-                                                         attr_to_keep=obs_attr_to_keep
-                                                         )
-        # export observation space for the Grid2opEnv
-        self.observation_space = Box(shape=self._gym_env.observation_space.shape,
-                                     low=self._gym_env.observation_space.low,
-                                     high=self._gym_env.observation_space.high)
+    env_configs = {
+        'DQN': {"obs_attr_to_keep": obs_attr_to_keep,'act_type':"discrete", "act_attr_to_keep": act_attr_to_keep},
+        'PPO': {"obs_attr_to_keep": obs_attr_to_keep,'act_type':"discrete", "act_attr_to_keep": act_attr_to_keep},
+        'A2C': {"obs_attr_to_keep": obs_attr_to_keep,'act_type':"discrete", "act_attr_to_keep": act_attr_to_keep},
+        'SAC': {"obs_attr_to_keep": obs_attr_to_keep,'act_type':"box", "act_attr_to_keep": act_attr_to_keep},
+        'HER': {"obs_attr_to_keep": obs_attr_to_keep,'act_type':"discrete", "act_attr_to_keep": act_attr_to_keep},
+        'DDPG':{"obs_attr_to_keep": obs_attr_to_keep,'act_type': "box", "act_attr_to_keep": act_attr_to_keep},
+        'TD3': {"obs_attr_to_keep": obs_attr_to_keep,'act_type':"box", "act_attr_to_keep": act_attr_to_keep},
+        'Random': {"obs_attr_to_keep": obs_attr_to_keep,'act_type':"discrete", "act_attr_to_keep": act_attr_to_keep},
+    }
 
-        # customize the action space
-        act_type = "discrete"
-        if "act_type" in env_config:
-            act_type = env_config["act_type"]
-
-        self._gym_env.action_space.close()
-
-        act_attr_to_keep = [key for key in self._gym_env.action_space.keys()]
-        
-        if act_type == "discrete":
-            # user wants a discrete action space
-            if "act_attr_to_keep" in env_config:
-                act_attr_to_keep = copy.deepcopy(env_config["act_attr_to_keep"])
-            self._gym_env.action_space = DiscreteActSpace(self._g2op_env.action_space,
-                                                          attr_to_keep=act_attr_to_keep)
-            self.action_space = Discrete(self._gym_env.action_space.n)
-        elif act_type == "box":
-            # user wants continuous action space
-            if "act_attr_to_keep" in env_config:
-                act_attr_to_keep = copy.deepcopy(env_config["act_attr_to_keep"])
-            self._gym_env.action_space = BoxGymActSpace(self._g2op_env.action_space,
-                                                        attr_to_keep=act_attr_to_keep)
-            self.action_space = Box(shape=self._gym_env.action_space.shape,
-                                    low=self._gym_env.action_space.low,
-                                    high=self._gym_env.action_space.high)
-        elif act_type == "multi_discrete":
-            # user wants a multi-discrete action space
-            if "act_attr_to_keep" in env_config:
-                act_attr_to_keep = copy.deepcopy(env_config["act_attr_to_keep"])
-            self._gym_env.action_space = MultiDiscreteActSpace(self._g2op_env.action_space,
-                                                               attr_to_keep=act_attr_to_keep)
-            self.action_space = MultiDiscrete(self._gym_env.action_space.nvec)
-        else:
-            raise NotImplementedError(f"action type '{act_type}' is not currently supported.")
-        
-        # self.setup_observations()
-        # self.setup_actions()
-
-    def flatten_action_space(self):
-        """
-        Flatten the dictionary of actions into a MultiBinary action space.
-        This will map each binary decision into a separate element in the MultiBinary space.
-        """
-        action_space_dict = self._gym_env.action_space.spaces
-        binary_lengths = []
-
-        # Flatten all MultiBinary and Discrete actions into a single binary vector
-        for key, space in action_space_dict.items():
-            if isinstance(space, gym.spaces.MultiBinary):
-                binary_lengths.append(space.n)
-            elif isinstance(space, gym.spaces.Box):
-                # Flatten Box space into binary format
-                flattened_length = np.prod(space.shape)
-                binary_lengths.append(int(flattened_length))
-
-        # Return a MultiBinary space representing the flattened action space
-        return gym.spaces.MultiBinary(sum(binary_lengths))
-
-    def unflatten_action(self, action):
-        """
-        Convert the flattened action space back into the dictionary format
-        that the environment expects.
-        """
-        action_space_dict = self._gym_env.action_space.spaces
-        start_idx = 0
-        action_dict = {}
-
-        for key, space in action_space_dict.items():
-            if isinstance(space, gym.spaces.MultiBinary):
-                end_idx = start_idx + space.n
-                action_dict[key] = action[start_idx:end_idx]
-                start_idx = end_idx
-            elif isinstance(space, gym.spaces.Box):
-                flattened_length = int(np.prod(space.shape))
-                end_idx = start_idx + flattened_length
-                action_dict[key] = np.reshape(action[start_idx:end_idx], space.shape)
-                start_idx = end_idx
-
-        return action_dict
-
-    def setup_observations(self):
-        self.observation_space = self._gym_env.observation_space
-
-    def setup_actions(self):
-        self.action_space = self.flatten_action_space()
-
-    def reset(self, seed=None):
-        return self._gym_env.reset(seed=seed, options=None)
-
-    def step(self, action):
-        # Map the flattened action space back to the original action space dictionary
-        action_dict = action
-
-        return self._gym_env.step(action_dict)
-
-    def render(self):
-        return self._gym_env.render()
-
-# Training PPO or A2C on the Grid2Op Environment
-def train_agent(agent_type="PPO"):
-    env = Gym2OpEnv()
+    models = {
+        'Random': RandomAgent(Gym2OpEnv(env_configs['Random'])),
+        'DQN': DQN("MlpPolicy", Gym2OpEnv(env_configs['DQN']), verbose=0),
+        'PPO': PPO("MlpPolicy", Gym2OpEnv(env_configs['PPO']), verbose=0),
+        'A2C': A2C("MlpPolicy", Gym2OpEnv(env_configs['A2C']), verbose=0),
+        'SAC': SAC("MlpPolicy", Gym2OpEnv(env_configs['SAC']), verbose=0),
+        # 'HER': HerReplayBuffer("MlpPolicy", Gym2OpEnv(env_configs['HER']), verbose=1),
+        'DDPG': DDPG("MlpPolicy", Gym2OpEnv(env_configs['DDPG']), verbose=0),
+        'TD3': TD3("MlpPolicy", Gym2OpEnv(env_configs['TD3']), verbose=0),
+    }
     
-    # Check if the environment is compatible
-    check_env(env)
-
-    # Train either PPO or A2C
-    if agent_type == "PPO":
-        model = PPO("MultiInputPolicy", env, verbose=1)
-    elif agent_type == "A2C":
-        model = A2C("MultiInputPolicy", env, verbose=1)
-    else:
-        raise ValueError("Unsupported agent type. Choose either 'PPO' or 'A2C'.")
-
-    # Train the model
-    model.learn(total_timesteps=10000, progress_bar=True)
-
-    # Save the model
-    model.save(f"{agent_type}_grid2op")
-
-    return model
-
-def evaluate_agent(model, env, num_episodes=10, random_agent=False):
-    total_rewards = []
-    episode_lengths = []
-
-    for episode in tqdm(range(num_episodes), desc=f"Evaluating over {num_episodes} episodes"):
-        obs, info = env.reset()
-        episode_reward = 0
-        episode_length = 0
-        done = False
+    for model_name, model in models.items():
+        if not os.path.exists(f'models/{model_name}.zip'):
+            print("Training: ", model_name)
+            model.learn(total_timesteps=1024, progress_bar=True)
+            model.save(f"models/{model_name}")
+        else:
+            model.load(f'models/{model_name}.zip')
+    
+    final_out = ""
+    for model_name, model in models.items():
+        env_config = {"obs_attr_to_keep": env_configs[model_name]['obs_attr_to_keep'], "act_type": env_configs[model_name]['act_type'], "act_attr_to_keep": env_configs[model_name]['act_attr_to_keep']}
+        gym_env = Gym2OpEnv(env_config)
         
-        while not done:
-            if random_agent:
-                action = env.action_space.sample()
-            else:
-                action, _states = model.predict(obs, deterministic=True)
+        out = f"Evaluating for {model_name}:\n"
+        print(out)
+        avg_reward, avg_length = evaluate_agent(model, gym_env, 50)
+        out += f"Average reward: {avg_reward}\nAverage length: {avg_length}\n"
+        print(f"Average reward: {avg_reward}\nAverage length: {avg_length}\n")
 
-            obs, reward, done, truncated, info = env.step(action)
-            episode_reward += reward
-            episode_length += 1
+        final_out += out + "\n"
 
-            if done or truncated:
-                break
-        
-        total_rewards.append(episode_reward)
-        episode_lengths.append(episode_length)
-
-    # Compute average reward and episode length
-    avg_reward = sum(total_rewards) / num_episodes
-    avg_length = sum(episode_lengths) / num_episodes
-
-    return avg_reward, avg_length
+    results = open("results.txt", "w")
+    results.write(final_out)
+    results.close()
 
 if __name__ == "__main__":
-    agent_type = "PPO"  # Change this to "A2C" if you want to train A2C
-    trained_model = train_agent(agent_type)
-    
-    # Evaluate the trained agent
-    env = Gym2OpEnv()
-    avg_reward, avg_length = evaluate_agent(trained_model, env)
-    print(f"Average Reward: {avg_reward}, Average Episode Length: {avg_length}")
-
-    agent_type = "Random"
-
-    # Evaluate the trained agent
-    env = Gym2OpEnv()
-    avg_reward, avg_length = evaluate_agent(model=None, env=env, random_agent=True)
-    print(f"Average Reward: {avg_reward}, Average Episode Length: {avg_length}")
+    main()
