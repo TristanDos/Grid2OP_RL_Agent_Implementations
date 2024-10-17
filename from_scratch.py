@@ -243,24 +243,28 @@ def main():
         'Random': {"obs_attr_to_keep": obs_attr_to_keep,'act_type':"discrete", "act_attr_to_keep": act_attr_to_keep},
     }
 
+    KEEP_TRAINING = 0
+
     models = {
         'Random': RandomAgent(Gym2OpEnv(env_configs['Random'])),
-        'DQN': DQN("MlpPolicy", Gym2OpEnv(env_configs['DQN']), verbose=0),
+        # 'DQN': DQN("MlpPolicy", Gym2OpEnv(env_configs['DQN']), verbose=0),
         'PPO': PPO("MlpPolicy", Gym2OpEnv(env_configs['PPO']), verbose=0),
         'A2C': A2C("MlpPolicy", Gym2OpEnv(env_configs['A2C']), verbose=0),
-        'SAC': SAC("MlpPolicy", Gym2OpEnv(env_configs['SAC']), verbose=0),
+        # 'SAC': SAC("MlpPolicy", Gym2OpEnv(env_configs['SAC']), verbose=0),
         # 'HER': HerReplayBuffer("MlpPolicy", Gym2OpEnv(env_configs['HER']), verbose=1),
-        'DDPG': DDPG("MlpPolicy", Gym2OpEnv(env_configs['DDPG']), verbose=0),
-        'TD3': TD3("MlpPolicy", Gym2OpEnv(env_configs['TD3']), verbose=0),
+        # 'DDPG': DDPG("MlpPolicy", Gym2OpEnv(env_configs['DDPG']), verbose=0),
+        # 'TD3': TD3("MlpPolicy", Gym2OpEnv(env_configs['TD3']), verbose=0),
     }
     
     for model_name, model in models.items():
         if not os.path.exists(f'models/{model_name}.zip'):
             print("Training: ", model_name)
-            model.learn(total_timesteps=1024, progress_bar=True)
+            model.learn(total_timesteps=10000, progress_bar=True)
             model.save(f"models/{model_name}")
         else:
             model.load(f'models/{model_name}.zip')
+
+            if KEEP_TRAINING > 0: model.learn(total_timesteps=KEEP_TRAINING, progress_bar=True)
     
     final_out = ""
     for model_name, model in models.items():

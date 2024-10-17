@@ -1,28 +1,12 @@
 Evaluating for Random:
-Average reward: 0.24482043749652804
-Average length: 3.96
-
-Evaluating for DQN:
-Average reward: 149.1742371481657
-Average length: 470.4
+Average reward: 0.12572624221444129
+Average length: 3.36
 
 Evaluating for PPO:
-Average reward: 12.821937041580677
-Average length: 39.62
+Average reward: 409.42986733973027
+Average length: 1368.44
 
 Evaluating for A2C:
-Average reward: 6.613298803269863
-Average length: 22.42
-
-Evaluating for SAC:
-Average reward: 519.0936572021246
-Average length: 1559.74
-
-Evaluating for DDPG:
-Average reward: 519.0936572021246
-Average length: 1559.74
-
-Evaluating for TD3:
-Average reward: 519.0936572021246
-Average length: 1559.74
+Average reward: 572.5459334978461
+Average length: 1719.24
 
