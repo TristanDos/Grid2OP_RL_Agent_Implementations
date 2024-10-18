@@ -3,7 +3,6 @@ from gymnasium.spaces import Discrete, MultiDiscrete, Box
 import json
 
 import grid2op
-from grid2op import gym_compat
 from grid2op.Parameters import Parameters
 from grid2op.Action import PlayableAction
 from grid2op.Observation import CompleteObservation
@@ -14,7 +13,7 @@ from lightsim2grid import LightSimBackend
 from typing import Dict, Literal, Any
 import copy
 
-from stable_baselines3 import *
+from stable_baselines3 import A2C, DDPG, DQN, HerReplayBuffer, PPO, SAC, TD3
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.env_util import make_vec_env
 import numpy as np
@@ -54,7 +53,7 @@ class Gym2OpEnv(gym.Env):
         if env_config is None:
             env_config = {}
 
-        self._gym_env = gym_compat.GymEnv(self._g2op_env)
+        self._gym_env = GymEnv(self._g2op_env)
 
         # customize observation space
 
