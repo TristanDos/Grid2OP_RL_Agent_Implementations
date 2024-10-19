@@ -1,0 +1,18 @@
+/home/useradd/.local/lib/python3.10/site-packages/grid2op/gym_compat/box_gym_actspace.py:238: UserWarning: The class "BoxGymActSpace" 
+should mainly be used to consider only continuous actions (eg. redispatch, set_storage or curtail). Though it is possible to use 
+"change_bus" when building it, be aware that this discrete action will be treated as continuous. Consider using the "MultiDiscreteActSpace" 
+for these attributes.
+
+/home/useradd/.local/lib/python3.10/site-packages/grid2op/gym_compat/discrete_gym_actspace.py:260: UserWarning: The class "DiscreteActSpace" 
+should mainly be used to consider only discrete actions (eg. set_line_status, set_bus or change_bus). Though it is possible to use 
+"set_storage" when building it, be aware that this continuous action will be treated as discrete by splitting it into bins. Consider using 
+the "BoxGymActSpace" for these attributes.
+
+set_bus : int
+storage_set_bus : int
+change_bus : bool
+line_set_status : int
+line_change_status : bool
+redispatch : float
+curtail : float
+
