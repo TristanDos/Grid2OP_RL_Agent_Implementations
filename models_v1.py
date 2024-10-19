@@ -26,6 +26,7 @@ import os
 import callbacks
 import pickle
 import seaborn as sns
+import plotter
 
 
 class Gym2OpEnv(gym.Env):
@@ -264,23 +265,9 @@ def plot_metrics(metrics_dict: Dict[str, Dict[str, list]], version="v1", var=0):
     plt.savefig(f'plots/{version}/training_lengths_{var}.png')
     plt.close()
 
-def plot_comparison():
-    pass
-
-def main(var, acts, obs):
+def main(var, acts, obs, env_configs):
     act_attr_to_keep = acts
     obs_attr_to_keep = obs
-
-    env_configs = {
-        'Random': {"obs_attr_to_keep": obs_attr_to_keep,'act_type':"discrete", "act_attr_to_keep": act_attr_to_keep},
-        'PPO': {"obs_attr_to_keep": obs_attr_to_keep,'act_type':"discrete", "act_attr_to_keep": act_attr_to_keep},
-        'A2C': {"obs_attr_to_keep": obs_attr_to_keep,'act_type':"discrete", "act_attr_to_keep": act_attr_to_keep},
-        # 'DQN': {"obs_attr_to_keep": obs_attr_to_keep,'act_type':"discrete", "act_attr_to_keep": act_attr_to_keep},
-        # 'SAC': {"obs_attr_to_keep": obs_attr_to_keep,'act_type':"box", "act_attr_to_keep": act_attr_to_keep},
-        # 'HER': {"obs_attr_to_keep": obs_attr_to_keep,'act_type':"discrete", "act_attr_to_keep": act_attr_to_keep},
-        # 'DDPG':{"obs_attr_to_keep": obs_attr_to_keep,'act_type': "box", "act_attr_to_keep": act_attr_to_keep},
-        # 'TD3': {"obs_attr_to_keep": obs_attr_to_keep,'act_type':"box", "act_attr_to_keep": act_attr_to_keep},
-    }
 
     models = {
         'Random': RandomAgent(Gym2OpEnv(env_configs['Random'])),
@@ -294,7 +281,7 @@ def main(var, acts, obs):
     }
 
     KEEP_TRAINING = 0
-    TRAINING_STEPS = 10000
+    TRAINING_STEPS = 50000
 
     version = "v1"
     
@@ -354,365 +341,25 @@ def main(var, acts, obs):
     print("\nPlotting metrics...")
     plot_metrics(metrics_dict=metrics_dict, var=var)
 
+from v1_spaces import *
+
 if __name__ == "__main__":
-    
-    # '''
-    # DEFAULT SPACES
-    # '''
-    # act_attr_to_keep = ['change_bus', 'change_line_status', 'curtail', 'redispatch', 'set_bus', 'set_line_status']
-    # obs_attr_to_keep = ['a_or',
-    #                 'active_alert',
-    #                 'actual_dispatch',
-    #                 'alert_duration',
-    #                 'attack_under_alert',
-    #                 'attention_budget',
-    #                 'current_step',
-    #                 'curtailment',
-    #                 'curtailment_limit',
-    #                 'curtailment_limit_effective',
-    #                 'curtailment_limit_mw',
-    #                 'curtailment_mw',
-    #                 'day',
-    #                 'day_of_week',
-    #                 'delta_time',
-    #                 'duration_next_maintenance',
-    #                 'gen_margin_down',
-    #                 'gen_margin_up',
-    #                 'gen_p',
-    #                 'gen_p_before_curtail',
-    #                 'gen_q',
-    #                 'gen_theta',
-    #                 'gen_v',
-    #                 'hour_of_day',
-    #                 'is_alarm_illegal',
-    #                 'last_alarm',
-    #                 'line_status',
-    #                 'load_p',
-    #                 'load_q',
-    #                 'load_theta',
-    #                 'load_v',
-    #                 'max_step',
-    #                 'minute_of_hour',
-    #                 'month',
-    #                 'p_ex',
-    #                 'p_or',
-    #                 'prod_p',
-    #                 'prod_q',
-    #                 'prod_v',
-    #                 'q_ex',
-    #                 'q_or',
-    #                 'rho',
-    #                 'storage_charge',
-    #                 'storage_power',
-    #                 'storage_power_target',
-    #                 'storage_theta',
-    #                 'target_dispatch',
-    #                 'thermal_limit',
-    #                 'theta_ex',
-    #                 'theta_or',
-    #                 'time_before_cooldown_line',
-    #                 'time_before_cooldown_sub',
-    #                 'time_next_maintenance',
-    #                 'time_since_last_alarm',
-    #                 'time_since_last_alert',
-    #                 'time_since_last_attack',
-    #                 'timestep_overflow',
-    #                 'topo_vect',
-    #                 'total_number_of_alert',
-    #                 'v_ex',
-    #                 'v_or',
-    #                 'was_alarm_used_after_game_over',
-    #                 'was_alert_used_after_attack',
-    #                 'year']
+    act_attr_to_keep, obs_attr_to_keep, env_configs = variation_0().get_attributes()
 
-    # main(0, act_attr_to_keep, obs_attr_to_keep)
+    main(0, act_attr_to_keep, obs_attr_to_keep, env_configs) 
 
-    # '''
-    # REMOVING SET ACTIONS
-    # REMOVING REDUNDANCIES
-    # '''
-    # act_attr_to_keep = ['change_bus', 'change_line_status', 'curtail', 'redispatch']
-    # obs_attr_to_keep = ['a_or',
-    #                 'active_alert',
-    #                 'actual_dispatch',
-    #                 'alert_duration',
-    #                 'attack_under_alert',
-    #                 'attention_budget',
-    #                 'current_step',
-    #                 'curtailment',
-    #                 'curtailment_limit',
-    #                 # 'curtailment_limit_effective',
-    #                 # 'curtailment_limit_mw',
-    #                 # 'curtailment_mw',
-    #                 'day',
-    #                 'day_of_week',
-    #                 'delta_time',
-    #                 'duration_next_maintenance',
-    #                 # 'gen_margin_down',
-    #                 # 'gen_margin_up',
-    #                 'gen_p',
-    #                 # 'gen_p_before_curtail',
-    #                 # 'gen_q',
-    #                 # 'gen_theta',
-    #                 # 'gen_v',
-    #                 'hour_of_day',
-    #                 'is_alarm_illegal',
-    #                 'last_alarm',
-    #                 'line_status',
-    #                 'load_p',
-    #                 # 'load_q',
-    #                 # 'load_theta',
-    #                 # 'load_v',
-    #                 'max_step',
-    #                 'minute_of_hour',
-    #                 'month',
-    #                 'p_ex',
-    #                 'p_or',
-    #                 'prod_p',
-    #                 # 'prod_q',
-    #                 # 'prod_v',
-    #                 'q_ex',
-    #                 'q_or',
-    #                 'rho',
-    #                 'storage_charge',
-    #                 'storage_power',
-    #                 # 'storage_power_target',
-    #                 # 'storage_theta',
-    #                 'target_dispatch',
-    #                 'thermal_limit',
-    #                 'theta_ex',
-    #                 'theta_or',
-    #                 'time_before_cooldown_line',
-    #                 'time_before_cooldown_sub',
-    #                 'time_next_maintenance',
-    #                 'time_since_last_alarm',
-    #                 'time_since_last_alert',
-    #                 'time_since_last_attack',
-    #                 'timestep_overflow',
-    #                 'topo_vect',
-    #                 'total_number_of_alert',
-    #                 'v_ex',
-    #                 'v_or',
-    #                 'was_alarm_used_after_game_over',
-    #                 'was_alert_used_after_attack',
-    #                 'year']
+    act_attr_to_keep, obs_attr_to_keep, env_configs = variation_1().get_attributes()
 
-    # main(1, act_attr_to_keep, obs_attr_to_keep)
+    main(1, act_attr_to_keep, obs_attr_to_keep, env_configs)
 
-    # '''
-    # REMOVING CHANGE ACTIONS
-    # REMOVING TIME DEPENDENT OBSERVATIONS
-    # '''
-    # act_attr_to_keep = ['curtail', 'redispatch', 'set_bus', 'set_line_status']
-    # obs_attr_to_keep = ['a_or',
-    #                 'active_alert',
-    #                 'actual_dispatch',
-    #                 'alert_duration',
-    #                 'attack_under_alert',
-    #                 'attention_budget',
-    #                 # 'current_step',
-    #                 'curtailment',
-    #                 'curtailment_limit',
-    #                 'curtailment_limit_effective',
-    #                 'curtailment_limit_mw',
-    #                 'curtailment_mw',
-    #                 # 'day',
-    #                 # 'day_of_week',
-    #                 # 'delta_time',
-    #                 # 'duration_next_maintenance',
-    #                 'gen_margin_down',
-    #                 'gen_margin_up',
-    #                 'gen_p',
-    #                 'gen_p_before_curtail',
-    #                 'gen_q',
-    #                 'gen_theta',
-    #                 'gen_v',
-    #                 # 'hour_of_day',
-    #                 'is_alarm_illegal',
-    #                 'last_alarm',
-    #                 'line_status',
-    #                 'load_p',
-    #                 'load_q',
-    #                 'load_theta',
-    #                 'load_v',
-    #                 'max_step',
-    #                 # 'minute_of_hour',
-    #                 # 'month',
-    #                 'p_ex',
-    #                 'p_or',
-    #                 'prod_p',
-    #                 'prod_q',
-    #                 'prod_v',
-    #                 'q_ex',
-    #                 'q_or',
-    #                 'rho',
-    #                 'storage_charge',
-    #                 'storage_power',
-    #                 'storage_power_target',
-    #                 'storage_theta',
-    #                 'target_dispatch',
-    #                 'thermal_limit',
-    #                 'theta_ex',
-    #                 'theta_or',
-    #                 # 'time_before_cooldown_line',
-    #                 # 'time_before_cooldown_sub',
-    #                 # 'time_next_maintenance',
-    #                 # 'time_since_last_alarm',
-    #                 # 'time_since_last_alert',
-    #                 # 'time_since_last_attack',
-    #                 'timestep_overflow',
-    #                 'topo_vect',
-    #                 'total_number_of_alert',
-    #                 'v_ex',
-    #                 'v_or',
-    #                 'was_alarm_used_after_game_over',
-    #                 'was_alert_used_after_attack',
-    #                 # 'year'
-    #                 ]
+    act_attr_to_keep, obs_attr_to_keep, env_configs = variation_2().get_attributes()
 
-    # main(2, act_attr_to_keep, obs_attr_to_keep)
+    main(2, act_attr_to_keep, obs_attr_to_keep, env_configs)
 
-    '''
-    REMOVING CHANGE ACTIONS
-    REMOVING REDUNDANCIES AND TIME OBSERVATIONS
-    '''
-    act_attr_to_keep = ['set_bus', 'set_line_status', 'curtail', 'redispatch']
-    obs_attr_to_keep = ['a_or',
-                    'active_alert',
-                    'actual_dispatch',
-                    'alert_duration',
-                    'attack_under_alert',
-                    'attention_budget',
-                    # 'current_step',
-                    'curtailment',
-                    # 'curtailment_limit',
-                    # 'curtailment_limit_effective',
-                    # 'curtailment_limit_mw',
-                    # 'curtailment_mw',
-                    # 'day',
-                    # 'day_of_week',
-                    'delta_time',
-                    'duration_next_maintenance',
-                    'gen_margin_down',
-                    'gen_margin_up',
-                    'gen_p',
-                    # 'gen_p_before_curtail',
-                    # 'gen_q',
-                    # 'gen_theta',
-                    # 'gen_v',
-                    # 'hour_of_day',
-                    'is_alarm_illegal',
-                    'last_alarm',
-                    'line_status',
-                    'load_p',
-                    # 'load_q',
-                    # 'load_theta',
-                    # 'load_v',
-                    'max_step',
-                    # 'minute_of_hour',
-                    'month',
-                    'p_ex',
-                    'p_or',
-                    'prod_p',
-                    # 'prod_q',
-                    # 'prod_v',
-                    'q_ex',
-                    'q_or',
-                    'rho',
-                    'storage_charge',
-                    'storage_power',
-                    # 'storage_power_target',
-                    # 'storage_theta',
-                    'target_dispatch',
-                    'thermal_limit',
-                    'theta_ex',
-                    'theta_or',
-                    # 'time_before_cooldown_line',
-                    # 'time_before_cooldown_sub',
-                    # 'time_next_maintenance',
-                    # 'time_since_last_alarm',
-                    # 'time_since_last_alert',
-                    # 'time_since_last_attack',
-                    'timestep_overflow',
-                    # 'topo_vect',
-                    'total_number_of_alert',
-                    'v_ex',
-                    'v_or',
-                    'was_alarm_used_after_game_over',
-                    'was_alert_used_after_attack',
-                    # 'year'
-                    ]
+    act_attr_to_keep, obs_attr_to_keep, env_configs = variation_3().get_attributes()
 
-    main(3, act_attr_to_keep, obs_attr_to_keep)
+    main(3, act_attr_to_keep, obs_attr_to_keep, env_configs)
 
-    '''
-    REMOVING SET ACTIONS
-    REMOVING ALERT/ATTACK OBSERVATIONS
-    '''
-    act_attr_to_keep = ['change_bus', 'change_line_status', 'curtail', 'redispatch']
-    obs_attr_to_keep = ['a_or',
-                    # 'active_alert',
-                    # 'actual_dispatch',
-                    # 'alert_duration',
-                    # 'attack_under_alert',
-                    'attention_budget',
-                    'current_step',
-                    'curtailment',
-                    'curtailment_limit',
-                    'curtailment_limit_effective',
-                    'curtailment_limit_mw',
-                    'curtailment_mw',
-                    'day',
-                    'day_of_week',
-                    'delta_time',
-                    'duration_next_maintenance',
-                    'gen_margin_down',
-                    'gen_margin_up',
-                    'gen_p',
-                    'gen_p_before_curtail',
-                    'gen_q',
-                    'gen_theta',
-                    'gen_v',
-                    'hour_of_day',
-                    'is_alarm_illegal',
-                    'last_alarm',
-                    'line_status',
-                    'load_p',
-                    'load_q',
-                    'load_theta',
-                    'load_v',
-                    'max_step',
-                    'minute_of_hour',
-                    'month',
-                    'p_ex',
-                    'p_or',
-                    'prod_p',
-                    'prod_q',
-                    'prod_v',
-                    'q_ex',
-                    'q_or',
-                    'rho',
-                    'storage_charge',
-                    'storage_power',
-                    'storage_power_target',
-                    'storage_theta',
-                    'target_dispatch',
-                    'thermal_limit',
-                    'theta_ex',
-                    'theta_or',
-                    # 'time_before_cooldown_line',
-                    # 'time_before_cooldown_sub',
-                    # 'time_next_maintenance',
-                    # 'time_since_last_alarm',
-                    # 'time_since_last_alert',
-                    # 'time_since_last_attack',
-                    'timestep_overflow',
-                    'topo_vect',
-                    # 'total_number_of_alert',
-                    'v_ex',
-                    'v_or',
-                    # 'was_alarm_used_after_game_over',
-                    # 'was_alert_used_after_attack',
-                    'year']
+    act_attr_to_keep, obs_attr_to_keep, env_configs = variation_4().get_attributes()
 
-    main(4, act_attr_to_keep, obs_attr_to_keep)
+    main(4, act_attr_to_keep, obs_attr_to_keep, env_configs)
