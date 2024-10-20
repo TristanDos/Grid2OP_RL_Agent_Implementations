@@ -98,10 +98,10 @@ if __name__=="__main__":
     version = "v1"
 
     metrics_list = []
-    for i in range(0, 5):
-        with open(f'models/{version}/metrics_{i}.pkl', 'rb') as f:
-            metrics_dict = pickle.load(f) # deserialize using load()]
-            metrics_list.append(metrics_dict)
+    
+    with open(f'models/{version}/metrics.pkl', 'rb') as f:
+        metrics_dict = pickle.load(f) # deserialize using load()]
+        metrics_list.append(metrics_dict)
 
     var_names = ["Baseline", "Variation 1", "Variation 2", "Variation 3", "Variation 4",]
     plot_obs_act_space_metrics(metrics_list, var_names)
