@@ -281,7 +281,7 @@ def main(var, acts, obs, env_configs):
     }
 
     KEEP_TRAINING = 0
-    TRAINING_STEPS = 50000
+    TRAINING_STEPS = 100000
 
     version = "v1"
     
