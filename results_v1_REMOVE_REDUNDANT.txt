@@ -1,0 +1,12 @@
+Evaluating for Random:
+Average reward: 0.10006554871797561
+Average length: 3.4
+
+Evaluating for PPO:
+Average reward: 169.80228024721146
+Average length: 485.0
+
+Evaluating for A2C:
+Average reward: 133.98362240195274
+Average length: 377.0
+

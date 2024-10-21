@@ -3,10 +3,9 @@
 #SBATCH --output=/home-mscluster/tdremendos/RL/result_%N_%j.txt
 #SBATCH --error=/home-mscluster/tdremendos/RL/error_%N_%j.txt
 #SBATCH --ntasks=1
-#SBATCH --exclude=mscluster[8,9,35,42,44,48,54,57,59,61,62,65,68,75,76,77]
 #SBATCH --time=72:00:00
-#SBATCH --partition=bigbatch
+#SBATCH --partition=stampede
 
-python3 models_v0
+python3 models_v1.py
 
 wait

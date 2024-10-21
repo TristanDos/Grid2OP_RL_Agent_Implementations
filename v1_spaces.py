@@ -151,7 +151,7 @@ def combinatorial_unions(named_sets):
     sets = list(named_sets.values())
     
     # Loop over all possible lengths of combinations (0 to N)
-    for r in range(len(sets) + 1):
+    for r in range(1, len(sets) + 1):
         # For each combination of size r, compute the union
         for combination in itertools.combinations(enumerate(sets), r):
             indices = [i for i, _ in combination]  # Get the indices of the sets in the combination

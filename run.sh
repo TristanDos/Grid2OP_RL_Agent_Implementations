@@ -4,7 +4,7 @@
 source ~/.bashrc
 
 # Activate the conda environment
-conda activate RL
+conda activate RL_Assignment
 
 # Submit the job multiple times using sbatch
 sbatch job.batch
