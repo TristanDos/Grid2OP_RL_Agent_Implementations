@@ -6,6 +6,6 @@
 #SBATCH --time=72:00:00
 #SBATCH --partition=stampede
 
-python3 models_v1.py
+python3 models_v0.py
 
 wait

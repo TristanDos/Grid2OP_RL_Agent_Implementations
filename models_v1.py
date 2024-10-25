@@ -294,10 +294,12 @@ def run(var, env_configs):
     save_dir = f'models/{version}/{var}'
     os.makedirs(save_dir, exist_ok=True)
 
-    if os.path.exists(f'models/{version}/{var}/metrics.pkl'):
-        print("Loading metrics from pickle file")
-        with open(f'models/{version}/{var}/metrics.pkl', 'rb') as f:
-            metrics_dict = pickle.load(f) # deserialize using load()
+    # if os.path.exists(f'models/{version}/{var}/metrics.pkl'):
+    #     print("Loading metrics from pickle file")
+    #     with open(f'models/{version}/{var}/metrics.pkl', 'rb') as f:
+    #         metrics_dict = pickle.load(f) # deserialize using load()
+
+    metrics_dict = {}
 
     for model_name, model in models.items():
         vals : Dict[str, list] = dict() 
@@ -310,13 +312,13 @@ def run(var, env_configs):
             vals['training_episode_lengths'] = training_episode_lengths
 
             metrics_dict[model_name] = vals
-        else:
-            print("Loaded Model: ", model_name)
-            model = model.load(f'models/{version}/{var}/{model_name}.zip')
+        # else:
+        #     print("Loaded Model: ", model_name)
+        #     model = model.load(f'models/{version}/{var}/{model_name}.zip')
             
-            if KEEP_TRAINING > 0:
-                print("Re-training: ", model_name)
-                model, training_rewards, training_episode_lengths = train(model=model, model_name=model_name, total_timesteps=KEEP_TRAINING, var=var)
+        #     if KEEP_TRAINING > 0:
+        #         print("Re-training: ", model_name)
+        #         model, training_rewards, training_episode_lengths = train(model=model, model_name=model_name, total_timesteps=KEEP_TRAINING, var=var)
 
         models[model_name] = model
 

@@ -5,6 +5,102 @@ import numpy as np
 import pandas as pd
 import os
 
+def plot_v0_average(metrics_dicts):
+    model_names = metrics_dict.keys()
+    eval_rewards_arr = []
+    eval_lengths_arr = []
+    training_rewards_dict = {}
+    training_lengths_dict = {}
+
+    for model_name in model_names:
+        eval_reward = 0
+        eval_length = 0
+        training_rewards = [0] * 2000
+        training_lengths = [0] * 2000
+
+        for met in metrics_dicts:
+            metrics = met[model_name]
+
+            eval_reward += metrics['eval_reward']
+            eval_length += metrics['eval_length']
+            training_rewards += metrics['training_rewards']
+            training_lengths += metrics['training_episode_lengths']
+        
+        eval_reward /= 3
+        eval_length /= 3
+
+        new_training_rewards = []
+        new_training_lengths = []
+
+        for step in range(len(training_rewards)):
+            if training_lengths[step] != 0:
+                new_training_rewards.append(training_rewards[step] / 3)
+                new_training_lengths.append(training_lengths[step] / 3)
+            else:
+                break
+
+        eval_rewards_arr.append(eval_reward)
+        eval_lengths_arr.append(eval_length)
+
+        if model_name != "Random":
+            training_rewards_dict[model_name] = new_training_rewards
+            training_lengths_dict[model_name] = new_training_lengths
+
+    plt.figure(figsize=(10, 6))
+    plt.bar(model_names, eval_rewards_arr, capsize=10)
+    # sns.barplot(model_names, eval_rewards_arr, capsize=10)
+    plt.title('Average Model Returns During Evaluation')
+    plt.ylabel('Average Return')
+    plt.ylim(bottom=0)
+    for i, v in enumerate(eval_rewards_arr):
+        plt.text(i, v + 0.5, f'{v:.2f}', ha='center')
+    plt.savefig(f'plots/{version}/eval_rewards.png')
+    plt.close()
+
+    plt.figure(figsize=(10, 6))
+    plt.bar(model_names, eval_lengths_arr, capsize=10)
+    # sns.barplot(model_names, eval_lengths_arr, capsize=10)
+    plt.title('Average Model Episode Lengths During Evaluation')
+    plt.ylabel('Average Episode Length (Number of Steps)')
+    plt.ylim(bottom=0)
+    for i, v in enumerate(eval_lengths_arr):
+        plt.text(i, v + 0.5, f'{v:.2f}', ha='center')
+    plt.savefig(f'plots/{version}/eval_lengths.png')
+    plt.close()
+
+    plt.figure(figsize=(10, 6))
+
+    counter = 0
+    markers = ['o', 's']
+    for model_name, training_rewards in training_rewards_dict.items():
+        plt.plot(training_rewards, label=model_name, marker=markers[counter], linestyle='-')
+        # sns.lineplot(training_rewards, label=model_name, marker=markers[counter], linestyle='-')
+        
+        counter += 1
+    
+    plt.xlabel('Episodes')
+    plt.ylabel('Reward')
+    plt.title(f'Rewards Accrued During Training for {[model_name for model_name in training_rewards_dict.keys()]}')
+    plt.legend()
+    plt.savefig(f'plots/{version}/training_rewards.png')
+    plt.close()
+
+    plt.figure(figsize=(10, 6))
+    
+    counter = 0
+    markers = ['o', 's']
+    for model_name, training_lengths in training_lengths_dict.items():
+        plt.plot(training_lengths, label=model_name, marker=markers[counter], linestyle='-')
+        # sns.lineplot(training_lengths, label=model_name, marker=markers[counter], linestyle='-')
+        
+        counter += 1
+
+    plt.xlabel('Episodes')
+    plt.ylabel('Number of Steps')
+    plt.title(f'Episode Length During Training for {[model_name for model_name in training_lengths_dict.keys()]}')
+    plt.legend()
+    plt.savefig(f'plots/{version}/training_lengths.png')
+    plt.close()
 
 def plot_obs_act_combos_grouped(metrics_dicts, variations, window_size=10):
     """
@@ -90,7 +186,7 @@ def plot_obs_act_combos_grouped(metrics_dicts, variations, window_size=10):
     # plt.show()
     plt.savefig(f'plots/v1/comparisons.png')
 
-def plot_obs_act_combos_separate(metrics_dicts, variations, window_size=10, version="v1"):
+def plot_obs_act_combos_separate(metrics_dicts, variations, window_size=30, version="v1"):
     """
     Function to plot training and evaluation metrics for PPO and A2C models across different
     observation/action space variations with optional smoothing.
@@ -132,7 +228,7 @@ def plot_obs_act_combos_separate(metrics_dicts, variations, window_size=10, vers
         eval_lengths_a2c.append(np.mean(metrics_dict['A2C']['eval_length']))
 
     # Plot 1: Line plot comparing PPO training rewards across variations with smoothing
-    plt.figure(figsize=(20, 16))
+    plt.figure(figsize=(16, 10))
     for i, rewards in enumerate(training_rewards_ppo):
         plt.plot(rewards, label=f'{variations[i]}')
     plt.title(f'PPO Training Rewards Over Time (Window Size: {window_size})')
@@ -144,7 +240,7 @@ def plot_obs_act_combos_separate(metrics_dicts, variations, window_size=10, vers
     plt.close()
 
     # Plot 2: Line plot comparing A2C training rewards across variations with smoothing
-    plt.figure(figsize=(20, 16))
+    plt.figure(figsize=(16, 10))
     for i, rewards in enumerate(training_rewards_a2c):
         plt.plot(rewards, label=f'{variations[i]}')
     plt.title(f'A2C Training Rewards Over Time (Window Size: {window_size})')
@@ -160,7 +256,7 @@ def plot_obs_act_combos_separate(metrics_dicts, variations, window_size=10, vers
     index = np.arange(len(variations))
     
     ## Plot 3: Grouped bar graph comparing avg eval rewards for PPO and A2C across variations
-    plt.figure(figsize=(20, 24))
+    plt.figure(figsize=(18, 16))
     bars1 = plt.bar(index, eval_rewards_ppo, bar_width, label='PPO')
     bars2 = plt.bar(index + bar_width, eval_rewards_a2c, bar_width, label='A2C')
 
@@ -178,14 +274,15 @@ def plot_obs_act_combos_separate(metrics_dicts, variations, window_size=10, vers
     plt.title('Average Evaluation Rewards')
     plt.xlabel('Observation/Action Space Variations')
     plt.ylabel('Avg Rewards')
-    plt.xticks(index + bar_width / 2, variations, rotation=90)
+    plt.xticks(index + bar_width / 2, variations, rotation=45)
+    plt.yscale('log')
     plt.legend()
     plt.tight_layout()
     plt.savefig(f'{save_dir}/comparisons_eval_rewards.png')
     plt.close()
 
     # Plot 4: Grouped bar graph comparing avg eval lengths for PPO and A2C across variations
-    plt.figure(figsize=(20, 24))
+    plt.figure(figsize=(18, 16))
     bars1 = plt.bar(index, eval_lengths_ppo, bar_width, label='PPO')
     bars2 = plt.bar(index + bar_width, eval_lengths_a2c, bar_width, label='A2C')
 
@@ -197,6 +294,7 @@ def plot_obs_act_combos_separate(metrics_dicts, variations, window_size=10, vers
     plt.xlabel('Observation/Action Space Variations')
     plt.ylabel('Avg Episode Lengths')
     plt.xticks(index + bar_width / 2, variations, rotation=45)
+    plt.yscale('log')
     plt.legend()
     plt.tight_layout()
     plt.savefig(f'{save_dir}/comparisons_eval_lengths.png')
@@ -208,7 +306,7 @@ if __name__=="__main__":
 
     var_names = ["CHANGE_ACTION_REMOVE", "SET_ACTION_REMOVE", "REMOVE_REDUNDANT U REMOVE_ADVERSARIAL", "REMOVE_ADVERSARIAL",
                   "REMOVE_REDUNDANT U REMOVE_TIME_DEPENDENT U REMOVE_ADVERSARIAL", "REMOVE_REDUNDANT U REMOVE_TIME_DEPENDENT",
-                  "REMOVE_REDUNDANT", "REMOVE_TIME_DEPENDENT U REMOVE_ADVERSARIAL", "REMOVE_TIME_DEPENDENT"]
+                  "REMOVE_REDUNDANT", "REMOVE_TIME_DEPENDENT U REMOVE_ADVERSARIAL", "REMOVE_TIME_DEPENDENT", "empty"]
     
     metrics_list = []
     for var in var_names:
@@ -216,4 +314,13 @@ if __name__=="__main__":
             metrics_dict = pickle.load(f) # deserialize using load()]
             metrics_list.append(metrics_dict)
 
-    plot_obs_act_combos_separate(metrics_list, var_names)
+    # plot_obs_act_combos_separate(metrics_list, var_names)
+
+    version = "v0"
+
+    metrics_list = []
+    for i in range(3):
+        with open(f'models/{version}/metrics{i}.pkl', 'rb') as f:
+            metrics_list.append(pickle.load(f))
+    
+    plot_v0_average(metrics_list)

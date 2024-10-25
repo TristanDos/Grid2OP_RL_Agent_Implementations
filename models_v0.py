@@ -119,7 +119,7 @@ class Gym2OpEnv(gym.Env):
             print(act_type)
             raise NotImplementedError(f"action type '{act_type}' is not currently supported.")
 
-    def reset(self, seed=None, options=None):
+    def reset(self, seed=69, options=None):
         return self._gym_env.reset(seed=seed, options=None)
 
     def step(self, action):
@@ -264,7 +264,7 @@ def plot_metrics(metrics_dict: Dict[str, Dict[str, list]], version="v0"):
     plt.savefig(f'plots/{version}/training_lengths.png')
     plt.close()
 
-def main():
+def main(var):
 
     act_attr_to_keep = ['change_bus', 'change_line_status', 'curtail', 'curtail_mw', 'redispatch', 'set_bus', 'set_line_status', 'set_storage']
     obs_attr_to_keep = ['a_or',
@@ -363,15 +363,15 @@ def main():
     training_episode_lengths = []
     metrics_dict = {}
 
-    if os.path.exists(f'models/{version}/metrics.pkl'):
+    if os.path.exists(f'models/{version}/metrics{var}.pkl'):
         print("Loading metrics from pickle file")
-        with open(f'models/{version}/metrics.pkl', 'rb') as f:
+        with open(f'models/{version}/metrics{var}.pkl', 'rb') as f:
             metrics_dict = pickle.load(f) # deserialize using load()
 
     for model_name, model in models.items():
         vals : Dict[str, list] = dict() 
         
-        if not os.path.exists(f'models/{version}/{model_name}.zip'):
+        if not os.path.exists(f'models/{version}/{model_name}_{var}.zip'):
             print("Training: ", model_name)
             
             model, training_rewards, training_episode_lengths = train(model=model, model_name=model_name, total_timesteps=TRAINING_STEPS)
@@ -381,7 +381,7 @@ def main():
             metrics_dict[model_name] = vals
         else:
             print("Loaded Model: ", model_name)
-            model = model.load(f'models/{version}/{model_name}.zip')
+            model = model.load(f'models/{version}/{model_name}_{var}.zip')
 
             if KEEP_TRAINING > 0:
                 print("Re-training: ", model_name)
@@ -395,7 +395,7 @@ def main():
         
         out = f"Evaluating for {model_name}:\n"
         print(out)
-        avg_reward, avg_length = evaluate_agent(model, gym_env, 30)
+        avg_reward, avg_length = evaluate_agent(model, gym_env, 10)
         out += f"Average reward: {avg_reward}\nAverage length: {avg_length}\n"
         print(f"Average reward: {avg_reward}\nAverage length: {avg_length}\n")
 
@@ -405,7 +405,7 @@ def main():
 
         final_out += out + "\n"
 
-    with open(f'models/{version}/metrics.pkl', 'wb') as f:  # open a text file
+    with open(f'models/{version}/metrics{var}.pkl', 'wb') as f:  # open a text file
         pickle.dump(metrics_dict, f) # serialize the list
 
     results = open(f"results_{version}.txt", "w")
@@ -416,4 +416,4 @@ def main():
     plot_metrics(metrics_dict=metrics_dict)
 
 if __name__ == "__main__":
-    main()
+    main("seed69")

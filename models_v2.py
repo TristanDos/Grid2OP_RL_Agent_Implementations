@@ -16,10 +16,12 @@ from grid2op.gym_compat import (BoxGymActSpace, BoxGymObsSpace,
                                 MultiDiscreteActSpace)
 from grid2op.Observation import CompleteObservation
 from grid2op.Parameters import Parameters
-from grid2op.Reward import CombinedScaledReward, L2RPNReward, N1Reward
+from grid2op.Reward import (CloseToOverflowReward, CombinedScaledReward,
+                            EconomicReward, L2RPNReward, LinesCapacityReward,
+                            LinesReconnectedReward, N1Reward)
 from gymnasium.spaces import Box, Discrete, MultiDiscrete
 from lightsim2grid import LightSimBackend
-from stable_baselines3 import PPO, A2C
+from stable_baselines3 import A2C, PPO
 from stable_baselines3.common.callbacks import CallbackList
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.env_util import make_vec_env
@@ -27,14 +29,15 @@ from tqdm import tqdm
 
 import callbacks
 import plotter
-import v1_spaces
+import v2_spaces
 
 
 class Gym2OpEnv(gym.Env):
     def __init__(self,
                  env_config: Dict[Literal["obs_attr_to_keep",
                                           "act_type",
-                                          "act_attr_to_keep"],
+                                          "act_attr_to_keep",
+                                          "reward_type"],
                                   Any]= None):
         super().__init__()
 
@@ -55,10 +58,10 @@ class Gym2OpEnv(gym.Env):
             reward_class=reward_class, param=p
         )
 
-        cr = self._g2op_env.get_reward_instance()
-        cr.addReward("N1", N1Reward(), 1.0)
-        cr.addReward("L2RPN", L2RPNReward(), 1.0)
-        cr.initialize(self._g2op_env)
+        # cr = self._g2op_env.get_reward_instance()
+        # cr.addReward("N1", N1Reward(), 1.0)
+        # cr.addReward("L2RPN", L2RPNReward(), 1.0)
+        # cr.initialize(self._g2op_env)
 
         if env_config is None:
             env_config = {}
@@ -69,6 +72,38 @@ class Gym2OpEnv(gym.Env):
 
         self.setup_observations(env_config)
         self.setup_actions(env_config)
+
+    def setup_rewards(self, env_config: dict[str, Any]):
+        cr = self._g2op_env.get_reward_instance()
+        reward_type = env_config.get("reward_type", "default")  # Default to stability-focused
+        
+         # Setup different reward combinations
+        if reward_type == "stability":
+            # Combination 1: Stability-Focused
+            cr.addReward("l2rpn", L2RPNReward(), 0.4)
+            cr.addReward("lines_capacity", LinesCapacityReward(), 0.4)
+            cr.addReward("n1", N1Reward(), 0.2)
+            
+        elif reward_type == "economic":
+            # Combination 2: Economic-Stability Balance
+            cr.addReward("economic", EconomicReward(), 0.4)
+            cr.addReward("lines_capacity", LinesCapacityReward(), 0.4)
+            cr.addReward("overflow", CloseToOverflowReward(), 0.2)
+            
+        elif reward_type == "comprehensive":
+            # Combination 3: Comprehensive Operation
+            cr.addReward("l2rpn", L2RPNReward(), 0.3)
+            cr.addReward("economic", EconomicReward(), 0.2)
+            cr.addReward("lines_capacity", LinesCapacityReward(), 0.2)
+            cr.addReward("reconnection", LinesReconnectedReward(), 0.15)
+            cr.addReward("overflow", CloseToOverflowReward(), 0.15)
+            
+        elif reward_type == "default":
+            # Default/Original reward setup
+            cr.addReward("N1", N1Reward(), 1.0)
+            cr.addReward("L2RPN", L2RPNReward(), 1.0)
+        
+        cr.initialize(self._g2op_env)
 
     def setup_observations(self, env_config):
         # customize observation space
@@ -175,7 +210,7 @@ def evaluate_agent(model, env, num_episodes=10):
     return avg_reward, avg_length
 
 
-def train(model, model_name, var, version="v1", total_timesteps=10000):
+def train(model, model_name, var, version="v2", total_timesteps=10000):
     reward_logger = callbacks.RewardLoggerCallback()
     length_logger = callbacks.EpisodeLengthLoggerCallback()
 
@@ -192,7 +227,7 @@ def train(model, model_name, var, version="v1", total_timesteps=10000):
     return model, rewards, episode_lengths
 
 
-def plot_metrics(metrics_dict: Dict[str, Dict[str, list]], version="v1", var=""):
+def plot_metrics(metrics_dict: Dict[str, Dict[str, list]], version="v2", var=""):
     # Create the folder if it doesn't exist
     save_dir = f'plots/{version}/{var}'
     os.makedirs(save_dir, exist_ok=True)
@@ -274,7 +309,6 @@ def plot_metrics(metrics_dict: Dict[str, Dict[str, list]], version="v1", var="")
     plt.savefig(f'plots/{version}/{var}/training_lengths.png')
     plt.close()
 
-
 def run(var, env_configs):
     models = {
         'Random': RandomAgent(Gym2OpEnv(env_configs['Random'])),
@@ -285,7 +319,7 @@ def run(var, env_configs):
     KEEP_TRAINING = 0
     TRAINING_STEPS = 100000
 
-    version = "v1"
+    version = "v2"
     
     training_rewards = []
     training_episode_lengths = []
@@ -324,7 +358,10 @@ def run(var, env_configs):
     final_out = ""
 
     for model_name, model in models.items():
-        env_config = {"obs_attr_to_keep": env_configs[model_name]['obs_attr_to_keep'], "act_type": env_configs[model_name]['act_type'], "act_attr_to_keep": env_configs[model_name]['act_attr_to_keep']}
+        env_config = {"obs_attr_to_keep": env_configs[model_name]['obs_attr_to_keep'], 
+                      "act_type": env_configs[model_name]['act_type'], 
+                      "act_attr_to_keep": env_configs[model_name]['act_attr_to_keep'],
+                      "reward_type": "default"}
         gym_env = Gym2OpEnv(env_config)
         
         out = f"Evaluating for {model_name}:\n"
@@ -350,30 +387,32 @@ def run(var, env_configs):
     plot_metrics(metrics_dict=metrics_dict, var=var)
 
 
-def investigate_action_space():
-    action_subspaces = v1_spaces.action_subspaces
+def investigate_reward_shapers():
+    configs= {
+        'PPO': ('SET_ACTION_REMOVE', 'REMOVE_TIME_DEPENDENT'),
+        'A2C': ('SET_ACTION_REMOVE', 'REMOVE_REDUNDANT U REMOVE_TIME_DEPENDENT U REMOVE_ADVERSARIAL'),
+    }
 
-    for variation_name, action_subspace in action_subspaces.items():
-        variation = v1_spaces.Variation(act_attr_to_rmv=action_subspace)
-        env_configs = variation.get_attributes()
-        run(variation_name, env_configs)
+    for key, value in configs.items():
+        configs[key] = (
+            v2_spaces.action_subspaces[value[0]],
+            v2_spaces.observation_subspaces[value[1]]
+        )
 
+    for reward_type in v2_spaces.REWARDS:
+        env_configs = {}
 
-def investigate_observation_space():
-    best_action_subspace = 'CHANGE_ACTION_REMOVE'
-    action_subspace = v1_spaces.action_subspaces[best_action_subspace]
+        for key, value in configs.items():
+            variation = v2_spaces.Variation(act_attr_to_rmv=value[0], obs_attr_to_rmv=value[1])
+            env_configs[key] = variation.get_attributes()[key]
 
-    observation_subspaces = v1_spaces.observation_subspaces
-    
-    for variation_name, observation_subspace in observation_subspaces.items():
-        variation = v1_spaces.Variation(act_attr_to_rmv=action_subspace, obs_attr_to_rmv=observation_subspace)
-        env_configs = variation.get_attributes()
-        run(variation_name, env_configs)
+        env_configs['Random'] = v2_spaces.Variation().get_attributes()['Random']
+        
+        run(reward_type, env_configs)
 
 
 def main():
-    investigate_action_space()
-    # investigate_observation_space()
+    investigate_reward_shapers()
 
 
 if __name__ == "__main__":
