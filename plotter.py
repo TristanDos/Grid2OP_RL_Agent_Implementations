@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import os
+import v2_spaces
 
 def plot_v0_average(metrics_dicts):
     model_names = metrics_dict.keys()
@@ -186,8 +187,10 @@ def plot_obs_act_combos_grouped(metrics_dicts, variations, window_size=10):
     # plt.show()
     plt.savefig(f'plots/v1/comparisons.png')
 
-def plot_obs_act_combos_separate(metrics_dicts, variations, window_size=30, version="v1"):
+def plot_obs_act_combos_separate(metrics_dicts, variations, window_size=10, version="v1"):
     """
+    Metrics Dict : model names -> Dict2 : TrainingRewards, EvalRewards etc. -> floats
+
     Function to plot training and evaluation metrics for PPO and A2C models across different
     observation/action space variations with optional smoothing.
     
@@ -256,7 +259,7 @@ def plot_obs_act_combos_separate(metrics_dicts, variations, window_size=30, vers
     index = np.arange(len(variations))
     
     ## Plot 3: Grouped bar graph comparing avg eval rewards for PPO and A2C across variations
-    plt.figure(figsize=(18, 16))
+    plt.figure(figsize=(18, 10))
     bars1 = plt.bar(index, eval_rewards_ppo, bar_width, label='PPO')
     bars2 = plt.bar(index + bar_width, eval_rewards_a2c, bar_width, label='A2C')
 
@@ -282,7 +285,7 @@ def plot_obs_act_combos_separate(metrics_dicts, variations, window_size=30, vers
     plt.close()
 
     # Plot 4: Grouped bar graph comparing avg eval lengths for PPO and A2C across variations
-    plt.figure(figsize=(18, 16))
+    plt.figure(figsize=(18, 10))
     bars1 = plt.bar(index, eval_lengths_ppo, bar_width, label='PPO')
     bars2 = plt.bar(index + bar_width, eval_lengths_a2c, bar_width, label='A2C')
 
@@ -300,27 +303,38 @@ def plot_obs_act_combos_separate(metrics_dicts, variations, window_size=30, vers
     plt.savefig(f'{save_dir}/comparisons_eval_lengths.png')
     plt.close()
 
-
 if __name__=="__main__":
+    version = "v2"
+
+    var_names = list(v2_spaces.REWARDS)
+    metrics_list = []
+    for var in var_names:
+        with open(f'fromCluster(Iterations0,1,2)/models/{version}/{var}/metrics.pkl', 'rb') as f:
+            metrics_dict = pickle.load(f) # deserialize using load()]
+            metrics_list.append(metrics_dict)
+    
+    plot_obs_act_combos_separate(metrics_list, var_names, version="v2")
+
     version = "v1"
 
-    var_names = ["CHANGE_ACTION_REMOVE", "SET_ACTION_REMOVE", "REMOVE_REDUNDANT U REMOVE_ADVERSARIAL", "REMOVE_ADVERSARIAL",
+    var_names = ["REMOVE_REDUNDANT U REMOVE_ADVERSARIAL", "REMOVE_ADVERSARIAL",
                   "REMOVE_REDUNDANT U REMOVE_TIME_DEPENDENT U REMOVE_ADVERSARIAL", "REMOVE_REDUNDANT U REMOVE_TIME_DEPENDENT",
-                  "REMOVE_REDUNDANT", "REMOVE_TIME_DEPENDENT U REMOVE_ADVERSARIAL", "REMOVE_TIME_DEPENDENT", "empty"]
+                  "REMOVE_REDUNDANT", "REMOVE_TIME_DEPENDENT U REMOVE_ADVERSARIAL", "REMOVE_TIME_DEPENDENT"]
     
     metrics_list = []
     for var in var_names:
-        with open(f'fromCluster/models/{version}/{var}/metrics.pkl', 'rb') as f:
+        with open(f'fromCluster(Iterations0,1,2)/models/{version}/{var}/metrics.pkl', 'rb') as f:
             metrics_dict = pickle.load(f) # deserialize using load()]
             metrics_list.append(metrics_dict)
 
-    # plot_obs_act_combos_separate(metrics_list, var_names)
+    plot_obs_act_combos_separate(metrics_list, var_names)
 
     version = "v0"
 
-    metrics_list = []
-    for i in range(3):
-        with open(f'models/{version}/metrics{i}.pkl', 'rb') as f:
-            metrics_list.append(pickle.load(f))
+    # metrics_list = []
+    # for i in range(3):
+    #     with open(f'fromCluster/models/{version}/metrics{i}.pkl', 'rb') as f:
+    #         metrics_list.append(pickle.load(f))
     
-    plot_v0_average(metrics_list)
+    # plot_v0_average(metrics_list)
+
