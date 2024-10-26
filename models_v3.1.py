@@ -31,8 +31,6 @@ import callbacks
 import plotter
 import v2_spaces
 
-SEED_NUM = 4321
-
 
 class Gym2OpEnv(gym.Env):
     def __init__(self,
@@ -74,11 +72,10 @@ class Gym2OpEnv(gym.Env):
 
         self.setup_observations(env_config)
         self.setup_actions(env_config)
-        self.setup_rewards(env_config)
 
-    def setup_rewards(self, env_config):
+    def setup_rewards(self, env_config: dict[str, Any]):
         cr = self._g2op_env.get_reward_instance()
-        reward_type = env_config.get("reward_type", "default")
+        reward_type = env_config.get("reward_type", "default")  # Default to stability-focused
         
          # Setup different reward combinations
         if reward_type == "stability":
@@ -159,7 +156,7 @@ class Gym2OpEnv(gym.Env):
             print(act_type)
             raise NotImplementedError(f"action type '{act_type}' is not currently supported.")
 
-    def reset(self, seed=SEED_NUM, options=None):
+    def reset(self, seed=69, options=None):
         return self._gym_env.reset(seed=seed, options=None)
 
     def step(self, action):
@@ -318,7 +315,7 @@ def run(var, env_configs):
         'PPO': PPO("MlpPolicy", Gym2OpEnv(env_configs['PPO']), verbose=0),
         'A2C': A2C("MlpPolicy", Gym2OpEnv(env_configs['A2C']), verbose=0),
     }
-
+    
     KEEP_TRAINING = 0
     TRAINING_STEPS = 100000
 
@@ -390,23 +387,26 @@ def run(var, env_configs):
     plot_metrics(metrics_dict=metrics_dict, var=var)
 
 
-def investigate_reward_shapers():
+def investigate_frame_stacks():
     optimal_configs= {
-        'PPO': ('SET_ACTION_REMOVE', 'REMOVE_TIME_DEPENDENT'),
-        'A2C': ('SET_ACTION_REMOVE', 'REMOVE_REDUNDANT U REMOVE_TIME_DEPENDENT U REMOVE_ADVERSARIAL'),
+        'PPO': ('SET_ACTION_REMOVE', 'REMOVE_TIME_DEPENDENT', 'stability'),
+        'A2C': ('SET_ACTION_REMOVE', 'REMOVE_REDUNDANT U REMOVE_TIME_DEPENDENT U REMOVE_ADVERSARIAL', 'stability'),
     }
+
+    STACK_LENGTHS = range(2,5)
 
     for key, value in optimal_configs.items():
         optimal_configs[key] = (
             v2_spaces.action_subspaces[value[0]],
-            v2_spaces.observation_subspaces[value[1]]
+            v2_spaces.observation_subspaces[value[1]],
+            value[2]
         )
 
-    for reward_type in v2_spaces.REWARDS:
+    for stack_length in STACK_LENGTHS:
         env_configs = {}
 
         for key, value in optimal_configs.items():
-            variation = v2_spaces.Variation(act_attr_to_rmv=value[0], obs_attr_to_rmv=value[1], reward_type=reward_type)
+            variation = v2_spaces.Variation(act_attr_to_rmv=value[0], obs_attr_to_rmv=value[1], reward_type=)
             env_configs[key] = variation.get_attributes()[key]
 
         env_configs['Random'] = v2_spaces.Variation().get_attributes()['Random']
