@@ -24,12 +24,13 @@ from grid2op.Reward import (CloseToOverflowReward, CombinedScaledReward,
                             LinesReconnectedReward, N1Reward)
 from gymnasium.spaces import Box, Discrete, MultiDiscrete
 from lightsim2grid import LightSimBackend
-from sb3_contrib import RecurrentPPO
 from stable_baselines3 import A2C, PPO
 from stable_baselines3.common.callbacks import CallbackList
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.env_util import make_vec_env
+from stable_baselines3.common.vec_env import VecFrameStack
 from tqdm import tqdm
+
 
 SEED_NUM = 4321
 
@@ -78,7 +79,7 @@ class Gym2OpEnv(gym.Env):
 
     def setup_rewards(self, env_config):
         cr = self._g2op_env.get_reward_instance()
-        reward_type = env_config.get("reward_type", "default")
+        reward_type = env_config.get("reward_type", "default")  # Default to stability-focused
         
          # Setup different reward combinations
         if reward_type == "stability":
@@ -174,7 +175,14 @@ class RandomAgent():
         self.env = env
 
     def predict(self, obs, deterministic: bool):
-        return self.env.action_space.sample(), None
+        # Handle batched input for vectorized environments
+        if len(obs.shape) == 1:
+            # Single environment, return a single action
+            return self.env.action_space.sample(), None
+        else:
+            # Vectorized environments (batch of observations)
+            # Return a batch of random actions (one for each environment)
+            return [self.env.action_space.sample() for _ in range(obs.shape[0])], None
     
     def learn(self, total_timesteps: int, progress_bar: bool, callback=None):
         pass
@@ -188,25 +196,25 @@ def evaluate_agent(model, env, num_episodes=10):
     episode_lengths = []
 
     for episode in tqdm(range(num_episodes), desc=f"Evaluating over {num_episodes} episodes"):
-        obs, info = env.reset()
-        lstm_states = None
+        obs = env.reset()
         episode_reward = 0
         episode_length = 0
         done = False
         
         while not done:
-            action, lstm_states = model.predict(obs, state=lstm_states, deterministic=True)
+            action, _states = model.predict(obs, deterministic=True)
 
-            obs, reward, done, truncated, info = env.step(action)
-            episode_reward += reward
+            obs, reward, done, info = env.step(action)
+            episode_reward += reward[0]
             episode_length += 1
 
-            if done or truncated:
+            if done:
                 break
         
         total_rewards.append(episode_reward)
         episode_lengths.append(episode_length)
 
+    # print(total_rewards)
     # Compute average reward and episode length
     avg_reward = sum(total_rewards) / num_episodes
     avg_length = sum(episode_lengths) / num_episodes
@@ -214,7 +222,7 @@ def evaluate_agent(model, env, num_episodes=10):
     return avg_reward, avg_length
 
 
-def train(model, model_name, var, version="v3.1", total_timesteps=10000):
+def train(model, model_name, var, version="v3.2", total_timesteps=10000):
     reward_logger = callbacks.RewardLoggerCallback()
     length_logger = callbacks.EpisodeLengthLoggerCallback()
 
@@ -231,7 +239,7 @@ def train(model, model_name, var, version="v3.1", total_timesteps=10000):
     return model, rewards, episode_lengths
 
 
-def plot_metrics(metrics_dict: Dict[str, Dict[str, list]], version="v3.1", var=""):
+def plot_metrics(metrics_dict: Dict[str, Dict[str, list]], version="v3.2", var=""):
     # Create the folder if it doesn't exist
     save_dir = f'plots/{version}/{var}'
     os.makedirs(save_dir, exist_ok=True)
@@ -313,18 +321,21 @@ def plot_metrics(metrics_dict: Dict[str, Dict[str, list]], version="v3.1", var="
     plt.savefig(f'plots/{version}/{var}/training_lengths.png')
     plt.close()
 
+
 def run(var, env_configs):
+    n_stacks=var
+    var = f'{var}_stack'
     KEEP_TRAINING = 0
-    TRAINING_STEPS = 0
-
+    TRAINING_STEPS = 100000
+    
     models = {
-        # 'Random': RandomAgent(Gym2OpEnv(env_configs['Random'])),
-        'PPO': RecurrentPPO("MlpLstmPolicy", Gym2OpEnv(env_configs['PPO']), verbose=0, n_steps=TRAINING_STEPS),
-        # 'A2C': A2C("MlpPolicy", Gym2OpEnv(env_configs['A2C']), verbose=0, n_steps=TRAINING_STEPS),
+        'Random': RandomAgent(VecFrameStack(make_vec_env(lambda: Gym2OpEnv(env_configs['Random']), n_envs=1), n_stack=n_stacks)),
+        'PPO': PPO("MlpPolicy", VecFrameStack(make_vec_env(lambda: Gym2OpEnv(env_configs['PPO']), n_envs=1), n_stack=n_stacks), verbose=0, n_steps=TRAINING_STEPS),
+        'A2C': A2C("MlpPolicy", VecFrameStack(make_vec_env(lambda: Gym2OpEnv(env_configs['A2C']), n_envs=1), n_stack=n_stacks), verbose=0, n_steps=TRAINING_STEPS),
     }
+    
 
-
-    version = "v3.1"
+    version = "v3.2"
     
     training_rewards = []
     training_episode_lengths = []
@@ -349,7 +360,7 @@ def run(var, env_configs):
         vals['training_episode_lengths'] = training_episode_lengths
 
         metrics_dict[model_name] = vals
- 
+
         models[model_name] = model
 
     final_out = ""
@@ -358,7 +369,7 @@ def run(var, env_configs):
         env_config = env_configs[model_name]
         env_config['reward_type'] = 'default'
 
-        gym_env = Gym2OpEnv(env_config)
+        gym_env = VecFrameStack(make_vec_env(lambda: Gym2OpEnv(env_config), n_envs=1), n_stack=n_stacks)
         
         out = f"Evaluating for {model_name}:\n"
         print(out)
@@ -389,6 +400,8 @@ def investigate_frame_stacks():
         'A2C': ('SET_ACTION_REMOVE', 'REMOVE_REDUNDANT', 'stability'),
     }
 
+    STACK_LENGTHS = range(2,5)
+
     for key, value in optimal_configs.items():
         optimal_configs[key] = (
             v2_spaces.action_subspaces[value[0]],
@@ -396,15 +409,16 @@ def investigate_frame_stacks():
             value[2]
         )
 
-    env_configs = {}
+    for stack_length in STACK_LENGTHS:
+        env_configs = {}
 
-    for key, value in optimal_configs.items():
-        variation = v2_spaces.Variation(act_attr_to_rmv=value[0], obs_attr_to_rmv=value[1], reward_type=value[2])
-        env_configs[key] = variation.get_attributes()[key]
+        for key, value in optimal_configs.items():
+            variation = v2_spaces.Variation(act_attr_to_rmv=value[0], obs_attr_to_rmv=value[1], reward_type=value[2])
+            env_configs[key] = variation.get_attributes()[key]
 
-    env_configs['Random'] = v2_spaces.Variation().get_attributes()['Random']
-    
-    run('LSTM', env_configs)
+        env_configs['Random'] = v2_spaces.Variation().get_attributes()['Random']
+        
+        run(stack_length, env_configs)
 
 
 def main():
