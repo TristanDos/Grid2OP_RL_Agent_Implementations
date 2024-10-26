@@ -392,8 +392,8 @@ def run(var, env_configs):
 
 def investigate_reward_shapers():
     optimal_configs= {
-        'PPO': ('SET_ACTION_REMOVE', 'REMOVE_TIME_DEPENDENT'),
-        'A2C': ('SET_ACTION_REMOVE', 'REMOVE_REDUNDANT U REMOVE_TIME_DEPENDENT U REMOVE_ADVERSARIAL'),
+        'PPO': ('SET_ACTION_REMOVE', 'REMOVE_REDUNDANT'),
+        'A2C': ('SET_ACTION_REMOVE', 'REMOVE_REDUNDANT'),
     }
 
     for key, value in optimal_configs.items():

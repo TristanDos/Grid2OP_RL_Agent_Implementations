@@ -304,16 +304,16 @@ def plot_obs_act_combos_separate(metrics_dicts, variations, window_size=10, vers
     plt.close()
 
 if __name__=="__main__":
-    version = "v2"
+    # version = "v2"
 
-    var_names = list(v2_spaces.REWARDS)
-    metrics_list = []
-    for var in var_names:
-        with open(f'fromCluster(Iterations0,1,2)/models/{version}/{var}/metrics.pkl', 'rb') as f:
-            metrics_dict = pickle.load(f) # deserialize using load()]
-            metrics_list.append(metrics_dict)
+    # var_names = list(v2_spaces.REWARDS)
+    # metrics_list = []
+    # for var in var_names:
+    #     with open(f'fromCluster(Iterations0,1,2)/models/{version}/{var}/metrics.pkl', 'rb') as f:
+    #         metrics_dict = pickle.load(f) # deserialize using load()]
+    #         metrics_list.append(metrics_dict)
     
-    plot_obs_act_combos_separate(metrics_list, var_names, version="v2")
+    # plot_obs_act_combos_separate(metrics_list, var_names, version="v2")
 
     version = "v1"
 
