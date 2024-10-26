@@ -1,0 +1,154 @@
+Training:  Random
+Training:  PPO
+ 100% ━━━━━━━━━━━━━━━━━━━━━━━━ 100,352/100,000  [ 0:14:01 < 0:00:00 , 188 it/s ]
+Training:  A2C
+ 100% ━━━━━━━━━━━━━━━━━━━━━━━━ 100,000/100,000  [ 0:07:40 < 0:00:00 , 234 it/s ]
+Evaluating for Random:
+
+Average reward: -0.013581806421279907
+Average length: 3.0
+
+Evaluating for PPO:
+
+Average reward: 369.71667774021626
+Average length: 1080.0
+
+Evaluating for A2C:
+
+Average reward: 369.7063899189234
+Average length: 1080.0
+
+
+Plotting metrics...
+Training:  Random
+Training:  PPO
+ 100% ━━━━━━━━━━━━━━━━━━━━━━━━ 100,352/100,000  [ 0:14:02 < 0:00:00 , 190 it/s ]
+Training:  A2C
+ 100% ━━━━━━━━━━━━━━━━━━━━━━━━ 100,000/100,000  [ 0:06:55 < 0:00:00 , 275 it/s ]
+Evaluating for Random:
+
+Average reward: -0.15770478323101997
+Average length: 2.6
+
+Evaluating for PPO:
+
+Average reward: 346.5978699028492
+Average length: 1059.0
+
+Evaluating for A2C:
+
+Average reward: 357.1850987970829
+Average length: 1060.0
+
+
+Plotting metrics...
+Training:  Random
+Training:  PPO
+ 100% ━━━━━━━━━━━━━━━━━━━━━━━━ 100,352/100,000  [ 0:14:24 < 0:00:00 , 181 it/s ]
+Training:  A2C
+ 100% ━━━━━━━━━━━━━━━━━━━━━━━━ 100,000/100,000  [ 0:07:03 < 0:00:00 , 270 it/s ]
+Evaluating for Random:
+
+Average reward: -0.0568820864893496
+Average length: 3.3
+
+Evaluating for PPO:
+
+Average reward: 346.5978699028492
+Average length: 1059.0
+
+Evaluating for A2C:
+
+Average reward: 354.56310817599297
+Average length: 1060.0
+
+
+Plotting metrics...
+Training:  Random
+Training:  PPO
+ 100% ━━━━━━━━━━━━━━━━━━━━━━━━ 100,352/100,000  [ 0:14:53 < 0:00:00 , 184 it/s ]
+Training:  A2C
+ 100% ━━━━━━━━━━━━━━━━━━━━━━━━ 100,000/100,000  [ 0:06:50 < 0:00:00 , 271 it/s ]
+Evaluating for Random:
+
+Average reward: 0.21606485731899738
+Average length: 3.9
+
+Evaluating for PPO:
+
+Average reward: 346.5978699028492
+Average length: 1059.0
+
+Evaluating for A2C:
+
+Average reward: 339.41667675971985
+Average length: 1059.0
+
+
+Plotting metrics...
+Training:  Random
+Training:  PPO
+ 100% ━━━━━━━━━━━━━━━━━━━━━━━━ 100,352/100,000  [ 0:14:13 < 0:00:00 , 182 it/s ]
+Training:  A2C
+ 100% ━━━━━━━━━━━━━━━━━━━━━━━━ 100,000/100,000  [ 0:08:57 < 0:00:00 , 228 it/s ]
+Evaluating for Random:
+
+Average reward: -0.12333611920475959
+Average length: 2.5
+
+Evaluating for PPO:
+
+Average reward: 346.5978699028492
+Average length: 1059.0
+
+Evaluating for A2C:
+
+Average reward: 370.7273853570223
+Average length: 1064.0
+
+
+Plotting metrics...
+Training:  Random
+Training:  PPO
+ 100% ━━━━━━━━━━━━━━━━━━━━━━━━ 100,352/100,000  [ 0:14:13 < 0:00:00 , 182 it/s ]
+Training:  A2C
+ 100% ━━━━━━━━━━━━━━━━━━━━━━━━ 100,000/100,000  [ 0:08:11 < 0:00:00 , 238 it/s ]
+Evaluating for Random:
+
+Average reward: -0.10075716525316239
+Average length: 2.7
+
+Evaluating for PPO:
+
+Average reward: 369.7487080693245
+Average length: 1080.0
+
+Evaluating for A2C:
+
+Average reward: 353.24588499963284
+Average length: 1060.0
+
+
+Plotting metrics...
+Training:  Random
+Training:  PPO
+ 100% ━━━━━━━━━━━━━━━━━━━━━━━━ 100,352/100,000  [ 0:14:40 < 0:00:00 , 182 it/s ]
+Training:  A2C
+ 100% ━━━━━━━━━━━━━━━━━━━━━━━━ 100,000/100,000  [ 0:08:09 < 0:00:00 , 224 it/s ]
+Evaluating for Random:
+
+Average reward: -0.2254703242331743
+Average length: 2.5
+
+Evaluating for PPO:
+
+Average reward: 369.57177279889584
+Average length: 1080.0
+
+Evaluating for A2C:
+
+Average reward: 148.35054975748062
+Average length: 415.0
+
+
+Plotting metrics...

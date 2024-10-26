@@ -27,6 +27,8 @@ import callbacks
 import pickle
 import seaborn as sns
 
+SEED_NUM = 4321
+
 
 class Gym2OpEnv(gym.Env):
     def __init__(self,
@@ -119,7 +121,7 @@ class Gym2OpEnv(gym.Env):
             print(act_type)
             raise NotImplementedError(f"action type '{act_type}' is not currently supported.")
 
-    def reset(self, seed=69, options=None):
+    def reset(self, seed=SEED_NUM, options=None):
         return self._gym_env.reset(seed=seed, options=None)
 
     def step(self, action):
@@ -355,7 +357,7 @@ def main(var):
     }
 
     KEEP_TRAINING = 0
-    TRAINING_STEPS = 10000
+    TRAINING_STEPS = 100000
 
     version = "v0"
     
@@ -416,4 +418,4 @@ def main(var):
     plot_metrics(metrics_dict=metrics_dict)
 
 if __name__ == "__main__":
-    main("seed69")
+    main("seed4321")

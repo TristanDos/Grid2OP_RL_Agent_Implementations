@@ -1,0 +1,22 @@
+Training:  Random
+Training:  PPO
+ 100% ━━━━━━━━━━━━━━━━━━━━━━━━━ 100,352/100,000  [ 1:07:22 < 0:00:00 , 34 it/s ]
+Training:  A2C
+ 100% ━━━━━━━━━━━━━━━━━━━━━━━━━ 100,000/100,000  [ 0:33:16 < 0:00:00 , 55 it/s ]
+Evaluating for Random:
+
+Average reward: 0.04345933711156249
+Average length: 3.9
+
+Evaluating for PPO:
+
+Average reward: 346.5978699028492
+Average length: 1059.0
+
+Evaluating for A2C:
+
+Average reward: 346.5978699028492
+Average length: 1059.0
+
+
+Plotting metrics...

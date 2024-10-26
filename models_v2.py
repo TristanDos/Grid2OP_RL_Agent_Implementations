@@ -31,6 +31,8 @@ import callbacks
 import plotter
 import v2_spaces
 
+SEED_NUM = 4321
+
 
 class Gym2OpEnv(gym.Env):
     def __init__(self,
@@ -156,7 +158,7 @@ class Gym2OpEnv(gym.Env):
             print(act_type)
             raise NotImplementedError(f"action type '{act_type}' is not currently supported.")
 
-    def reset(self, seed=69, options=None):
+    def reset(self, seed=SEED_NUM, options=None):
         return self._gym_env.reset(seed=seed, options=None)
 
     def step(self, action):
