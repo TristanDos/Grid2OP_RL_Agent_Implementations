@@ -332,29 +332,16 @@ def run(var, env_configs):
     save_dir = f'models/{version}/{var}'
     os.makedirs(save_dir, exist_ok=True)
 
-    if os.path.exists(f'models/{version}/{var}/metrics.pkl'):
-        print("Loading metrics from pickle file")
-        with open(f'models/{version}/{var}/metrics.pkl', 'rb') as f:
-            metrics_dict = pickle.load(f) # deserialize using load()
-
     for model_name, model in models.items():
         vals : Dict[str, list] = dict() 
-        
-        if not os.path.exists(f'models/{version}/{var}/{model_name}.zip'):
-            print("Training: ", model_name)
-            
-            model, training_rewards, training_episode_lengths = train(model=model, model_name=model_name, total_timesteps=TRAINING_STEPS, var=var)
-            vals['training_rewards'] = training_rewards
-            vals['training_episode_lengths'] = training_episode_lengths
 
-            metrics_dict[model_name] = vals
-        else:
-            print("Loaded Model: ", model_name)
-            model = model.load(f'models/{version}/{var}/{model_name}.zip')
-            
-            if KEEP_TRAINING > 0:
-                print("Re-training: ", model_name)
-                model, training_rewards, training_episode_lengths = train(model=model, model_name=model_name, total_timesteps=KEEP_TRAINING, var=var)
+        print("Training: ", model_name)
+        
+        model, training_rewards, training_episode_lengths = train(model=model, model_name=model_name, total_timesteps=TRAINING_STEPS, var=var)
+        vals['training_rewards'] = training_rewards
+        vals['training_episode_lengths'] = training_episode_lengths
+
+        metrics_dict[model_name] = vals
 
         models[model_name] = model
 
@@ -391,7 +378,7 @@ def run(var, env_configs):
 
 
 def investigate_reward_shapers():
-    optimal_configs= {
+    optimal_configs = {
         'PPO': ('SET_ACTION_REMOVE', 'REMOVE_REDUNDANT'),
         'A2C': ('SET_ACTION_REMOVE', 'REMOVE_REDUNDANT'),
     }

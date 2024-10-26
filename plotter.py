@@ -187,7 +187,7 @@ def plot_obs_act_combos_grouped(metrics_dicts, variations, window_size=10):
     # plt.show()
     plt.savefig(f'plots/v1/comparisons.png')
 
-def plot_obs_act_combos_separate(metrics_dicts, variations, window_size=10, version="v1"):
+def plot_obs_act_combos_separate(metrics_dicts, variations, window_size=30, version="v1"):
     """
     Metrics Dict : model names -> Dict2 : TrainingRewards, EvalRewards etc. -> floats
 
@@ -315,26 +315,26 @@ if __name__=="__main__":
     
     # plot_obs_act_combos_separate(metrics_list, var_names, version="v2")
 
-    version = "v1"
+    # version = "v1"
 
-    var_names = ["REMOVE_REDUNDANT U REMOVE_ADVERSARIAL", "REMOVE_ADVERSARIAL",
-                  "REMOVE_REDUNDANT U REMOVE_TIME_DEPENDENT U REMOVE_ADVERSARIAL", "REMOVE_REDUNDANT U REMOVE_TIME_DEPENDENT",
-                  "REMOVE_REDUNDANT", "REMOVE_TIME_DEPENDENT U REMOVE_ADVERSARIAL", "REMOVE_TIME_DEPENDENT"]
+    # var_names = ["REMOVE_REDUNDANT U REMOVE_ADVERSARIAL", "REMOVE_ADVERSARIAL",
+    #               "REMOVE_REDUNDANT U REMOVE_TIME_DEPENDENT U REMOVE_ADVERSARIAL", "REMOVE_REDUNDANT U REMOVE_TIME_DEPENDENT",
+    #               "REMOVE_REDUNDANT", "REMOVE_TIME_DEPENDENT U REMOVE_ADVERSARIAL", "REMOVE_TIME_DEPENDENT"]
     
-    metrics_list = []
-    for var in var_names:
-        with open(f'fromCluster(Iterations0,1,2)/models/{version}/{var}/metrics.pkl', 'rb') as f:
-            metrics_dict = pickle.load(f) # deserialize using load()]
-            metrics_list.append(metrics_dict)
+    # metrics_list = []
+    # for var in var_names:
+    #     with open(f'fromCluster(Iterations0,1,2)/models/{version}/{var}/metrics.pkl', 'rb') as f:
+    #         metrics_dict = pickle.load(f) # deserialize using load()]
+    #         metrics_list.append(metrics_dict)
 
-    plot_obs_act_combos_separate(metrics_list, var_names)
+    # plot_obs_act_combos_separate(metrics_list, var_names)
 
     version = "v0"
 
-    # metrics_list = []
-    # for i in range(3):
-    #     with open(f'fromCluster/models/{version}/metrics{i}.pkl', 'rb') as f:
-    #         metrics_list.append(pickle.load(f))
+    metrics_list = []
+    for i in range(3):
+        with open(f'fromCluster/models/{version}/metrics{i}.pkl', 'rb') as f:
+            metrics_list.append(pickle.load(f))
     
-    # plot_v0_average(metrics_list)
+    plot_v0_average(metrics_list)
 

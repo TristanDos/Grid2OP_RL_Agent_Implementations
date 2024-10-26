@@ -5,3 +5,4 @@ pip install stable-baselines3
 pip install matplotlib
 pip install tqdm
 pip install seaborn
+pip install sb3_contrib

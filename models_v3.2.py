@@ -332,8 +332,7 @@ def run(var, env_configs):
         'Random': RandomAgent(VecFrameStack(make_vec_env(lambda: Gym2OpEnv(env_configs['Random']), n_envs=1), n_stack=n_stacks)),
         'PPO': PPO("MlpPolicy", VecFrameStack(make_vec_env(lambda: Gym2OpEnv(env_configs['PPO']), n_envs=1), n_stack=n_stacks), verbose=0, n_steps=TRAINING_STEPS),
         'A2C': A2C("MlpPolicy", VecFrameStack(make_vec_env(lambda: Gym2OpEnv(env_configs['A2C']), n_envs=1), n_stack=n_stacks), verbose=0, n_steps=TRAINING_STEPS),
-    }
-    
+    } 
 
     version = "v3.2"
     
@@ -344,11 +343,6 @@ def run(var, env_configs):
     # Create the folder if it doesn't exist
     save_dir = f'models/{version}/{var}'
     os.makedirs(save_dir, exist_ok=True)
-
-    if os.path.exists(f'models/{version}/{var}/metrics.pkl'):
-        print("Loading metrics from pickle file")
-        with open(f'models/{version}/{var}/metrics.pkl', 'rb') as f:
-            metrics_dict = pickle.load(f) # deserialize using load()
 
     for model_name, model in models.items():
         vals : Dict[str, list] = dict() 

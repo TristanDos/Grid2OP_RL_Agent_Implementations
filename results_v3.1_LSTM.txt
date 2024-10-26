@@ -1,0 +1,4 @@
+Evaluating for PPO:
+Average reward: 90.75
+Average length: 181.5
+

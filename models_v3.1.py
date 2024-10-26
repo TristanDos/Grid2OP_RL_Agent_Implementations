@@ -315,14 +315,13 @@ def plot_metrics(metrics_dict: Dict[str, Dict[str, list]], version="v3.1", var="
 
 def run(var, env_configs):
     KEEP_TRAINING = 0
-    TRAINING_STEPS = 0
+    TRAINING_STEPS = 100000
 
     models = {
         # 'Random': RandomAgent(Gym2OpEnv(env_configs['Random'])),
         'PPO': RecurrentPPO("MlpLstmPolicy", Gym2OpEnv(env_configs['PPO']), verbose=0, n_steps=TRAINING_STEPS),
         # 'A2C': A2C("MlpPolicy", Gym2OpEnv(env_configs['A2C']), verbose=0, n_steps=TRAINING_STEPS),
     }
-
 
     version = "v3.1"
     
@@ -333,11 +332,6 @@ def run(var, env_configs):
     # Create the folder if it doesn't exist
     save_dir = f'models/{version}/{var}'
     os.makedirs(save_dir, exist_ok=True)
-
-    if os.path.exists(f'models/{version}/{var}/metrics.pkl'):
-        print("Loading metrics from pickle file")
-        with open(f'models/{version}/{var}/metrics.pkl', 'rb') as f:
-            metrics_dict = pickle.load(f) # deserialize using load()
 
     for model_name, model in models.items():
         vals : Dict[str, list] = dict() 

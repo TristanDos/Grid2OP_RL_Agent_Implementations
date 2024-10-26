@@ -143,7 +143,7 @@ class RandomAgent():
     def save(self, path):
         pass
 
-def evaluate_agent(model, env, num_episodes=10):
+def evaluate_agent(model, env, num_episodes=25):
     total_rewards = []
     episode_lengths = []
 
@@ -235,9 +235,9 @@ def plot_metrics(metrics_dict: Dict[str, Dict[str, list]], version="v0"):
     plt.figure(figsize=(10, 6))
 
     counter = 0
-    markers = ['o', 's']
+    # markers = ['o', 's']
     for model_name, training_rewards in training_rewards_dict.items():
-        plt.plot(training_rewards, label=model_name, marker=markers[counter], linestyle='-')
+        plt.plot(training_rewards, label=model_name, linestyle='-')
         # sns.lineplot(training_rewards, label=model_name, marker=markers[counter], linestyle='-')
         
         counter += 1
@@ -252,9 +252,9 @@ def plot_metrics(metrics_dict: Dict[str, Dict[str, list]], version="v0"):
     plt.figure(figsize=(10, 6))
     
     counter = 0
-    markers = ['o', 's']
+    # markers = ['o', 's']
     for model_name, training_lengths in training_lengths_dict.items():
-        plt.plot(training_lengths, label=model_name, marker=markers[counter], linestyle='-')
+        plt.plot(training_lengths, label=model_name, linestyle='-')
         # sns.lineplot(training_lengths, label=model_name, marker=markers[counter], linestyle='-')
         
         counter += 1
@@ -267,6 +267,9 @@ def plot_metrics(metrics_dict: Dict[str, Dict[str, list]], version="v0"):
     plt.close()
 
 def main(var):
+
+    KEEP_TRAINING = 0
+    TRAINING_STEPS = 2
 
     act_attr_to_keep = ['change_bus', 'change_line_status', 'curtail', 'curtail_mw', 'redispatch', 'set_bus', 'set_line_status', 'set_storage']
     obs_attr_to_keep = ['a_or',
@@ -338,26 +341,14 @@ def main(var):
         'Random': {"obs_attr_to_keep": obs_attr_to_keep,'act_type':"discrete", "act_attr_to_keep": act_attr_to_keep},
         'PPO': {"obs_attr_to_keep": obs_attr_to_keep,'act_type':"discrete", "act_attr_to_keep": act_attr_to_keep},
         'A2C': {"obs_attr_to_keep": obs_attr_to_keep,'act_type':"discrete", "act_attr_to_keep": act_attr_to_keep},
-        # 'DQN': {"obs_attr_to_keep": obs_attr_to_keep,'act_type':"discrete", "act_attr_to_keep": act_attr_to_keep},
-        # 'SAC': {"obs_attr_to_keep": obs_attr_to_keep,'act_type':"box", "act_attr_to_keep": act_attr_to_keep},
-        # 'HER': {"obs_attr_to_keep": obs_attr_to_keep,'act_type':"discrete", "act_attr_to_keep": act_attr_to_keep},
-        # 'DDPG':{"obs_attr_to_keep": obs_attr_to_keep,'act_type': "box", "act_attr_to_keep": act_attr_to_keep},
-        # 'TD3': {"obs_attr_to_keep": obs_attr_to_keep,'act_type':"box", "act_attr_to_keep": act_attr_to_keep},
     }
 
     models = {
         'Random': RandomAgent(Gym2OpEnv(env_configs['Random'])),
-        'PPO': PPO("MlpPolicy", Gym2OpEnv(env_configs['PPO']), verbose=0),
-        'A2C': A2C("MlpPolicy", Gym2OpEnv(env_configs['A2C']), verbose=0),
-        # 'DQN': DQN("MlpPolicy", Gym2OpEnv(env_configs['DQN']), verbose=0),
-        # 'SAC': SAC("MlpPolicy", Gym2OpEnv(env_configs['SAC']), verbose=0),
-        # 'HER': HerReplayBuffer("MlpPolicy", Gym2OpEnv(env_configs['HER']), verbose=1),
-        # 'DDPG': DDPG("MlpPolicy", Gym2OpEnv(env_configs['DDPG']), verbose=0),
-        # 'TD3': TD3("MlpPolicy", Gym2OpEnv(env_configs['TD3']), verbose=0),
+        'PPO': PPO("MlpPolicy", Gym2OpEnv(env_configs['PPO']), verbose=0, n_steps=TRAINING_STEPS),
+        'A2C': A2C("MlpPolicy", Gym2OpEnv(env_configs['A2C']), verbose=0, n_steps=TRAINING_STEPS),
     }
 
-    KEEP_TRAINING = 0
-    TRAINING_STEPS = 100000
 
     version = "v0"
     
@@ -365,30 +356,17 @@ def main(var):
     training_episode_lengths = []
     metrics_dict = {}
 
-    if os.path.exists(f'models/{version}/metrics{var}.pkl'):
-        print("Loading metrics from pickle file")
-        with open(f'models/{version}/metrics{var}.pkl', 'rb') as f:
-            metrics_dict = pickle.load(f) # deserialize using load()
-
     for model_name, model in models.items():
         vals : Dict[str, list] = dict() 
         
-        if not os.path.exists(f'models/{version}/{model_name}_{var}.zip'):
-            print("Training: ", model_name)
-            
-            model, training_rewards, training_episode_lengths = train(model=model, model_name=model_name, total_timesteps=TRAINING_STEPS)
-            vals['training_rewards'] = training_rewards
-            vals['training_episode_lengths'] = training_episode_lengths
+        print("Training: ", model_name)
+        
+        model, training_rewards, training_episode_lengths = train(model=model, model_name=model_name, total_timesteps=TRAINING_STEPS)
+        vals['training_rewards'] = training_rewards
+        vals['training_episode_lengths'] = training_episode_lengths
 
-            metrics_dict[model_name] = vals
-        else:
-            print("Loaded Model: ", model_name)
-            model = model.load(f'models/{version}/{model_name}_{var}.zip')
+        metrics_dict[model_name] = vals
 
-            if KEEP_TRAINING > 0:
-                print("Re-training: ", model_name)
-                model, training_rewards, training_episode_lengths = train(model=model, model_name=model_name, total_timesteps=KEEP_TRAINING)
-    
     final_out = ""
 
     for model_name, model in models.items():
@@ -397,7 +375,7 @@ def main(var):
         
         out = f"Evaluating for {model_name}:\n"
         print(out)
-        avg_reward, avg_length = evaluate_agent(model, gym_env, 10)
+        avg_reward, avg_length = evaluate_agent(model, gym_env, 25)
         out += f"Average reward: {avg_reward}\nAverage length: {avg_length}\n"
         print(f"Average reward: {avg_reward}\nAverage length: {avg_length}\n")
 
@@ -410,7 +388,7 @@ def main(var):
     with open(f'models/{version}/metrics{var}.pkl', 'wb') as f:  # open a text file
         pickle.dump(metrics_dict, f) # serialize the list
 
-    results = open(f"results_{version}.txt", "w")
+    results = open(f"results_{version}_{var}.txt", "w")
     results.write(final_out)
     results.close()
 
