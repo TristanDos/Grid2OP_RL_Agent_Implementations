@@ -19,6 +19,8 @@ models_v3.py
 
 `plotter.py` , `callbacks.py` , `v1_spaces.py` and `v2_spaces.py` are supplementary files containing classes used in models_v*.py files.
 
+`run.sh` and `job.batch` are files used for running these files on the Wits Cluster.
+
 ---
 
 Subfolders are locations for outputs from the various python files:
@@ -77,6 +79,8 @@ Subfolders are locations for outputs from the various python files:
     * 3_stack (singular plots)
     * 4_stack (singular plots)
 
+* results (Contains text files of the evaluation results for every iteration)
+  
 ## Running all iterations
 
 `install_imports.bash` contains the pip commands for installing all of the necessary libraries for running the files.
@@ -94,6 +98,6 @@ chmod +rwx *.bash
 
 This will generate all of the .pkl files and plots in the folders specified in [File Structure](https://github.com/TristanDos/Grid2OP_RL_Agent_Implementations/tree/main?tab=readme-ov-file#file-structure "Specifies directory layout").
 
-Text files containing all of the evaluation results for each iteration will also be generated in the root in the following format:
+Text files containing all of the evaluation results for each iteration will also be generated in the results folder in the following format:
 
 `results_{version number}_{variation name}.txt`
