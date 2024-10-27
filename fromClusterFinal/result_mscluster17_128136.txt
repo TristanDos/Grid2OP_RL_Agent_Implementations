@@ -1,0 +1,9 @@
+Training:  PPO
+ 100% ━━━━━━━━━━━━━━━━━━━━━━━━━━ 100,000/100,000  [ 1:08:50 < 0:00:00 , ? it/s ]
+Evaluating for PPO:
+
+Average reward: 259.5
+Average length: 519.0
+
+
+Plotting metrics...
