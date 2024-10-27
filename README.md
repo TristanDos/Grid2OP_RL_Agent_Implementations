@@ -92,7 +92,7 @@ chmod +rwx *.bash
 
 ---
 
-This will generate all of the .pkl files and plots in the folders specified in link.
+This will generate all of the .pkl files and plots in the folders specified in [File Structure](https://github.com/TristanDos/Grid2OP_RL_Agent_Implementations/tree/main?tab=readme-ov-file#file-structure "Specifies directory layout").
 
 Text files containing all of the evaluation results for each iteration will also be generated in the root in the following format:
 
