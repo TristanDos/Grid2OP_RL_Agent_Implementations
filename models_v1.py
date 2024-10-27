@@ -331,7 +331,7 @@ def run(var, env_configs):
     with open(f'models/{version}/{var}/metrics.pkl', 'wb') as f:  # open a text file
         pickle.dump(metrics_dict, f) # serialize the list
 
-    results = open(f"results_{version}_{var}.txt", "w")
+    results = open(f"results/results_{version}_{var}.txt", "w")
     results.write(final_out)
     results.close()
 
@@ -349,7 +349,7 @@ def investigate_action_space():
 
 
 def investigate_observation_space():
-    best_action_subspace = 'SET_ACTION_REMOVE'
+    best_action_subspace = 'CHANGE_ACTION_REMOVE'
     action_subspace = v1_spaces.action_subspaces[best_action_subspace]
 
     observation_subspaces = v1_spaces.observation_subspaces

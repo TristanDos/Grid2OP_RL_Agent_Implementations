@@ -82,18 +82,21 @@ class Gym2OpEnv(gym.Env):
         
          # Setup different reward combinations
         if reward_type == "stability":
+            print("Doing stability")
             # Combination 1: Stability-Focused
             cr.addReward("l2rpn", L2RPNReward(), 0.4)
             cr.addReward("lines_capacity", LinesCapacityReward(), 0.4)
             cr.addReward("n1", N1Reward(), 0.2)
             
         elif reward_type == "economic":
+            print("Doing economic")
             # Combination 2: Economic-Stability Balance
             cr.addReward("economic", EconomicReward(), 0.4)
             cr.addReward("lines_capacity", LinesCapacityReward(), 0.4)
             cr.addReward("overflow", CloseToOverflowReward(), 0.2)
             
         elif reward_type == "comprehensive":
+            print("Doing comprehensive")
             # Combination 3: Comprehensive Operation
             cr.addReward("l2rpn", L2RPNReward(), 0.3)
             cr.addReward("economic", EconomicReward(), 0.2)
@@ -313,14 +316,15 @@ def plot_metrics(metrics_dict: Dict[str, Dict[str, list]], version="v2", var="")
     plt.close()
 
 def run(var, env_configs):
-    models = {
-        'Random': RandomAgent(Gym2OpEnv(env_configs['Random'])),
-        'PPO': PPO("MlpPolicy", Gym2OpEnv(env_configs['PPO']), verbose=0),
-        'A2C': A2C("MlpPolicy", Gym2OpEnv(env_configs['A2C']), verbose=0),
-    }
 
     KEEP_TRAINING = 0
     TRAINING_STEPS = 100000
+
+    models = {
+        'Random': RandomAgent(Gym2OpEnv(env_configs['Random'])),
+        'PPO': PPO("MlpPolicy", Gym2OpEnv(env_configs['PPO']), verbose=0, n_steps=TRAINING_STEPS),
+        'A2C': A2C("MlpPolicy", Gym2OpEnv(env_configs['A2C']), verbose=0, n_steps=TRAINING_STEPS),
+    }
 
     version = "v2"
     
@@ -369,7 +373,7 @@ def run(var, env_configs):
     with open(f'models/{version}/{var}/metrics.pkl', 'wb') as f:  # open a text file
         pickle.dump(metrics_dict, f) # serialize the list
 
-    results = open(f"results_{version}_{var}.txt", "w")
+    results = open(f"results/results_{version}_{var}.txt", "w")
     results.write(final_out)
     results.close()
 
@@ -379,8 +383,8 @@ def run(var, env_configs):
 
 def investigate_reward_shapers():
     optimal_configs = {
-        'PPO': ('SET_ACTION_REMOVE', 'REMOVE_REDUNDANT'),
-        'A2C': ('SET_ACTION_REMOVE', 'REMOVE_REDUNDANT'),
+        'PPO': ('CHANGE_ACTION_REMOVE', 'REMOVE_REDUNDANT'),
+        'A2C': ('CHANGE_ACTION_REMOVE', 'REMOVE_REDUNDANT'),
     }
 
     for key, value in optimal_configs.items():

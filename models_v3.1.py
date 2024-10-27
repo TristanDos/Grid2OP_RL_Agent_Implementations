@@ -4,14 +4,11 @@ import os
 import pickle
 from typing import Any, Dict, Literal
 
-import callbacks
 import grid2op
 import gymnasium as gym
 import matplotlib.pyplot as plt
 import numpy as np
-import plotter
 import seaborn as sns
-import v2_spaces
 from grid2op import gym_compat
 from grid2op.Action import PlayableAction
 from grid2op.gym_compat import (BoxGymActSpace, BoxGymObsSpace,
@@ -30,6 +27,10 @@ from stable_baselines3.common.callbacks import CallbackList
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.env_util import make_vec_env
 from tqdm import tqdm
+
+import callbacks
+import plotter
+import v2_spaces
 
 SEED_NUM = 4321
 
@@ -369,7 +370,7 @@ def run(var, env_configs):
     with open(f'models/{version}/{var}/metrics.pkl', 'wb') as f:  # open a text file
         pickle.dump(metrics_dict, f) # serialize the list
 
-    results = open(f"results_{version}_{var}.txt", "w")
+    results = open(f"results/results_{version}_{var}.txt", "w")
     results.write(final_out)
     results.close()
 
@@ -379,8 +380,8 @@ def run(var, env_configs):
 
 def investigate_frame_stacks():
     optimal_configs= {
-        'PPO': ('SET_ACTION_REMOVE', 'REMOVE_REDUNDANT', 'stability'),
-        'A2C': ('SET_ACTION_REMOVE', 'REMOVE_REDUNDANT', 'stability'),
+        'PPO': ('CHANGE_ACTION_REMOVE', 'REMOVE_REDUNDANT', 'stability'),
+        'A2C': ('CHANGE_ACTION_REMOVE', 'REMOVE_REDUNDANT', 'stability'),
     }
 
     for key, value in optimal_configs.items():

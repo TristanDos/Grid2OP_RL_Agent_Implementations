@@ -269,7 +269,7 @@ def plot_metrics(metrics_dict: Dict[str, Dict[str, list]], version="v0"):
 def main(var):
 
     KEEP_TRAINING = 0
-    TRAINING_STEPS = 2
+    TRAINING_STEPS = 100000
 
     act_attr_to_keep = ['change_bus', 'change_line_status', 'curtail', 'curtail_mw', 'redispatch', 'set_bus', 'set_line_status', 'set_storage']
     obs_attr_to_keep = ['a_or',
@@ -388,7 +388,7 @@ def main(var):
     with open(f'models/{version}/metrics{var}.pkl', 'wb') as f:  # open a text file
         pickle.dump(metrics_dict, f) # serialize the list
 
-    results = open(f"results_{version}_{var}.txt", "w")
+    results = open(f"results/results_{version}_{var}.txt", "w")
     results.write(final_out)
     results.close()
 
