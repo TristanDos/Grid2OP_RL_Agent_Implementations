@@ -19,6 +19,8 @@ models_v3.py
 
 `plotter.py` , `callbacks.py` , `v1_spaces.py` and `v2_spaces.py` are supplementary files containing classes used in models_v*.py files.
 
+`run.sh` and `job.batch` are files used for running these files on the Wits Cluster.
+
 ---
 
 Subfolders are locations for outputs from the various python files:
