@@ -14,7 +14,8 @@ The following files refer to the implementations for each iteration. (models_v{i
 models_v0.py
 models_v1.py
 models_v2.py
-models_v3.py
+models_v3.1.py
+models_v3.2.py
 ```
 
 `plotter.py` , `callbacks.py` , `v1_spaces.py` and `v2_spaces.py` are supplementary files containing classes used in models_v*.py files.
