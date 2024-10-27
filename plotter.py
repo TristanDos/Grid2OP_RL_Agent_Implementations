@@ -93,7 +93,7 @@ def plot_single(metrics_dict: Dict[str, Dict[str, list]], version="v0"):
     plt.savefig(f'plots/{version}/training_lengths.png')
     plt.close()
 
-def plot_comparisons(metrics_dicts, variations, window_size=30, version="v1", rotation=45, new_folder=""):
+def plot_comparisons(metrics_dicts, variations, window_size=30, version="v1", rotation=45, new_folder="", figsizes=[(8, 6), (8, 6), (8, 6), (12, 6)]):
     """
     Metrics Dict : model names -> Dict2 : TrainingRewards, EvalRewards etc. -> floats
 
@@ -145,7 +145,7 @@ def plot_comparisons(metrics_dicts, variations, window_size=30, version="v1", ro
         eval_lengths_a2c.append(np.mean(metrics_dict['A2C']['eval_length']))
 
     # Plot 1: Line plot comparing PPO training rewards across variations with smoothing
-    plt.figure(figsize=(6, 4))
+    plt.figure(figsize=figsizes[0])
     for i, rewards in enumerate(training_rewards_ppo):
         plt.plot(rewards, label=f'{variations[i]}')
     plt.title(f'PPO Training Rewards Over Time (Window Size: {window_size})')
@@ -157,7 +157,7 @@ def plot_comparisons(metrics_dicts, variations, window_size=30, version="v1", ro
     plt.close()
 
     # Plot 2: Line plot comparing A2C training rewards across variations with smoothing
-    plt.figure(figsize=(6, 4))
+    plt.figure(figsize=figsizes[1])
     for i, rewards in enumerate(training_rewards_a2c):
         plt.plot(rewards, label=f'{variations[i]}')
     plt.title(f'A2C Training Rewards Over Time (Window Size: {window_size})')
@@ -173,7 +173,7 @@ def plot_comparisons(metrics_dicts, variations, window_size=30, version="v1", ro
     index = np.arange(len(variations))
     
     ## Plot 3: Grouped bar graph comparing avg eval rewards for PPO and A2C across variations
-    plt.figure(figsize=(12, 6))
+    plt.figure(figsize=figsizes[2])
     bars1 = plt.bar(index, eval_rewards_ppo, bar_width, label='PPO')
     bars2 = plt.bar(index + bar_width, eval_rewards_a2c, bar_width, label='A2C')
 
@@ -188,8 +188,16 @@ def plot_comparisons(metrics_dicts, variations, window_size=30, version="v1", ro
     autolabel(bars1)
     autolabel(bars2)
 
+    text = ""
+
+    if version == "v1":
+        text = 'Observation/Action Space Variations'
+    
+    if version == "v2":
+        text = 'Reward Function Variations'
+
     plt.title('Average Evaluation Rewards')
-    plt.xlabel('Observation/Action Space Variations')
+    plt.xlabel(text)
     plt.ylabel('Avg Rewards')
     plt.xticks(index + bar_width / 2, variations, rotation=rotation)
     # plt.yscale('log')
@@ -199,7 +207,7 @@ def plot_comparisons(metrics_dicts, variations, window_size=30, version="v1", ro
     plt.close()
 
     # Plot 4: Grouped bar graph comparing avg eval lengths for PPO and A2C across variations
-    plt.figure(figsize=(12, 6))
+    plt.figure(figsize=figsizes[3])
     bars1 = plt.bar(index, eval_lengths_ppo, bar_width, label='PPO')
     bars2 = plt.bar(index + bar_width, eval_lengths_a2c, bar_width, label='A2C')
 
@@ -208,7 +216,7 @@ def plot_comparisons(metrics_dicts, variations, window_size=30, version="v1", ro
     autolabel(bars2)
 
     plt.title('Average Evaluation Episode Lengths')
-    plt.xlabel('Observation/Action Space Variations')
+    plt.xlabel(text)
     plt.ylabel('Avg Episode Lengths')
     plt.xticks(index + bar_width / 2, variations, rotation=rotation)
     # plt.yscale('log')
@@ -224,7 +232,7 @@ def collectV0():
     version = "v0"
 
     metrics_dict = {}
-    with open(f'fromClusterRun4/models/{version}/metricsseed4321.pkl', 'rb') as f:
+    with open(f'models/{version}/metricsseed4321.pkl', 'rb') as f:
         metrics_dict = pickle.load(f) # deserialize using load()]
     
     plot_single(metrics_dict, version=version)
@@ -253,21 +261,23 @@ def collectV1():
     
     metrics_list = []
     for var in var_names:
-        with open(f'fromClusterRun4/models/{version}/{var}/metrics.pkl', 'rb') as f:
+        with open(f'models/{version}/{var}/metrics.pkl', 'rb') as f:
             metrics_dict = pickle.load(f) # deserialize using load()]
             metrics_list.append(metrics_dict)
 
-    plot_comparisons(metrics_list, short_names, version=version, rotation=0, new_folder="act_vs_obs/")
+    figsizes = [(7, 4), (7, 4), (12, 6), (12, 6)]
+    plot_comparisons(metrics_list, short_names, version=version, rotation=0, new_folder="act_vs_obs/", figsizes=figsizes)
 
     var_names = ["CHANGE_ACTION_REMOVE", "SET_ACTION_REMOVE"]
 
     metrics_list = []
     for var in var_names:
-        with open(f'fromClusterRun4/models/{version}/{var}/metrics.pkl', 'rb') as f:
+        with open(f'models/{version}/{var}/metrics.pkl', 'rb') as f:
             metrics_dict = pickle.load(f) # deserialize using load()]
             metrics_list.append(metrics_dict)
     
-    plot_comparisons(metrics_list, var_names, version=version, rotation=0, new_folder="change_vs_set/")
+    figsizes = [(7, 4), (7, 4), (6, 4), (6, 4)]
+    plot_comparisons(metrics_list, var_names, version=version, rotation=0, new_folder="change_vs_set/", figsizes=figsizes)
 
 def collectV2():
     """Collects metrics to plot iteration 2 results
@@ -278,11 +288,12 @@ def collectV2():
     var_names = list(v2_spaces.REWARDS)
     metrics_list = []
     for var in var_names:
-        with open(f'fromClusterRun4/models/{version}/{var}/metrics.pkl', 'rb') as f:
+        with open(f'models/{version}/{var}/metrics.pkl', 'rb') as f:
             metrics_dict = pickle.load(f) # deserialize using load()]
             metrics_list.append(metrics_dict)
     
-    plot_comparisons(metrics_list, var_names, version="v2")
+    figsizes = [(7, 4), (7, 4), (8, 5), (8, 5)]
+    plot_comparisons(metrics_list, var_names, figsizes=figsizes, version="v2")
 
 def collectV3():
     """Collects metrics to plot iteration 3 results
@@ -294,7 +305,7 @@ def collectV3():
     metrics_list = []
 
     for var in stack_var_names:
-        with open(f'fromClusterRun4/models/{version}/{var}/metrics.pkl', 'rb') as f:
+        with open(f'models/{version}/{var}/metrics.pkl', 'rb') as f:
             metrics_dict = pickle.load(f) # deserialize using load()]
             metrics_list.append(metrics_dict)
     
@@ -302,7 +313,7 @@ def collectV3():
     var = "LSTM"
     stack_var_names.append(var)
 
-    with open(f'fromClusterRun4/models/{version}/{var}/metrics.pkl', 'rb') as f:
+    with open(f'models/{version}/{var}/metrics.pkl', 'rb') as f:
             metrics_dict = pickle.load(f) # deserialize using load()]
             metrics_list.append(metrics_dict)
     
